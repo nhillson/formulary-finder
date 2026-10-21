@@ -606,12 +606,27 @@ async function readPdf(file, onProgress) {
 }
 
 /* ---------- Building the list of substitutes ---------- */
+const BRAND_SUFFIX = /^(hfa|diskus|inhub|respiclick|ellipta|respimat|handihaler|twisthaler|redihaler|flexhaler|digihaler|aerosphere|sensimist|pressair|neohaler|kwikpen|flextouch|solostar|pen|xr|xl|sr|er|la|cr|cd|cc|ds|odt|xr-odt|mlt|pm|aq|p|z)$/i;
+function coreBrand(b) {
+  let words = String(b).trim().split(/\s+/);
+  const strip = () => {
+    const last = words[words.length - 1];
+    if (words.length > 1 && BRAND_SUFFIX.test(last)) { words.pop(); return true; }
+    const h = last.match(/^(.{4,}?)-([A-Za-z-]+)$/);
+    if (h && BRAND_SUFFIX.test(h[2])) { words[words.length - 1] = h[1]; return true; }
+    return false;
+  };
+  while (strip()) {}
+  const core = words.join(" ");
+  return core.length >= 4 && core.toLowerCase() !== String(b).trim().toLowerCase() ? core : null;
+}
+function brandTerms(b) { const c = coreBrand(b); return c ? [{ text: b, generic: false }, { text: c, generic: false, fallback: true }] : [{ text: b, generic: false }]; }
 function mkIng(g, q, brands, rel, cls, note, ex, typed) {
   const exRe = ex && ex.length ? new RegExp("\\b(?:" + ex.join("|") + ")\\b", "i") : null;
   const products = typed
     ? [{ name: g, kind: "as typed", terms: [{ text: q, generic: false }], exRe }]
     : [{ name: g, kind: "generic", terms: [{ text: q, generic: true }], exRe }]
-        .concat(brands.map(b => ({ name: b, kind: "brand", terms: [{ text: b, generic: false }], exRe })));
+        .concat(brands.map(b => ({ name: b, kind: "brand", terms: brandTerms(b), exRe })));
   return { g, rel, cls: cls || "", note: note || "", products };
 }
 const ingFromMember = (m, rel, c) => mkIng(m.g, m.q, m.b, rel, c.name, "", c.ex.concat(m.ex));
@@ -711,6 +726,7 @@ function finishPlan(plan) {
 function searchProduct(prod, list) {
   const hits = []; const seen = new Set();
   for (const term of prod.terms) {
+    if (term.fallback && hits.length) break;
     const m = makeMatcher(term.text, term.generic); if (!m) continue;
     const key = keyOf(term.text);
     const L = list.lines;
@@ -776,7 +792,7 @@ function eff(p) {
   return { status: s.status, tierLabel: s.tier ? "Tier " + s.tier : "", tierNum: s.tier ?? null, codes, conds: codes.map(k => ({ code: k, text: FLAG_NAMES[k] + (f[k] ? ": " + f[k] : "") })), by: "text", page: s.page };
 }
 function statusText(e) {
-  return { covered: "Covered", conditions: "Covered with conditions", unclear: "Unclear", listed: "Listed in index" + (e.page ? ", p. " + e.page : ""), excluded: "Not covered", notfound: "Not found", unchecked: "" }[e.status] || "";
+  return { covered: "Covered", conditions: "Covered with conditions", unclear: "Unclear", listed: "Listed in index" + (e.page ? ", p. " + e.page : ""), excluded: "Not covered", notfound: state.list && state.list.medicare ? "Not on plan's list" : "Not found", unchecked: "" }[e.status] || "";
 }
 function capsule(e) {
   if (!["covered", "conditions", "unclear", "listed"].includes(e.status)) return "";
@@ -839,7 +855,9 @@ function prodHTML(p, ing) {
   if (e.conds.length) body += `<ul class="conds">${e.conds.map(c => `<li>${c.code ? `<b>${esc(c.code)}</b>` : ""}${esc(c.text)}</li>`).join("")}</ul>`;
   if (e.by === "claude") body += `<p class="by">Read by Claude from the lines below${e.tierLabel ? ". Tier: " + esc(e.tierLabel) : ""}.</p>`;
   else if (e.tierLabel && e.status !== "excluded") body += `<p class="by">Tier read from the line text. Check it against the line below.</p>`;
-  body += p.hits.length ? linesHTML(p.hits, 4) : `<p class="none">No line in this list mentions “${esc(p.name)}”. It may be listed under another name, or not covered.</p>`;
+  body += p.hits.length ? linesHTML(p.hits, 4) : (state.list && state.list.medicare
+    ? `<p class="none">This plan's Medicare drug list doesn't include ${esc(p.name)}, so the plan won't pay for it unless your prescriber gets an exception approved. A covered generic or another version above is usually the easier route.</p>`
+    : `<p class="none">No line in this list mentions “${esc(p.name)}”. It may be listed under another name, or not covered. Try Search the drug list below to check.</p>`);
   return `<details class="prod" data-st="${e.status}"><summary>${head}<span class="pst"><span class="st">${esc(statusText(e))}</span>${capsule(e)}</span></summary><div class="pbody">${body}</div></details>`;
 }
 function ingHTML(ing) {
@@ -917,7 +935,7 @@ function render() {
   if (plan.recognized || plan.partial || plan.checked) {
     if (plan.checked) {
       const e = cur ? eff(cur.p) : null;
-      const curBlock = cur ? `<div class="sum-cur"><h3>Your medication on this list</h3><div class="cur-row" data-st="${e.status}"><span class="cur-nm">${esc(cur.p.name)}</span><span class="st">${esc(statusText(e))}</span>${capsule(e)}</div>${e.conds.length ? `<p class="cur-conds">${e.conds.map(c => esc(c.text)).join(" · ")}</p>` : ""}${e.status === "notfound" ? `<p class="cur-conds">Not on this list under that name. It may be listed under its generic name, or not covered.</p>` : ""}</div>` : "";
+      const curBlock = cur ? `<div class="sum-cur"><h3>Your medication on this list</h3><div class="cur-row" data-st="${e.status}"><span class="cur-nm">${esc(cur.p.name)}</span><span class="st">${esc(statusText(e))}</span>${capsule(e)}</div>${e.conds.length ? `<p class="cur-conds">${e.conds.map(c => esc(c.text)).join(" · ")}</p>` : ""}${e.status === "notfound" ? `<p class="cur-conds">${state.list && state.list.medicare ? "This plan's drug list doesn't include it, so the plan won't pay for it without an approved exception. Check the other versions below." : "Not on this list under that name. It may be listed under its generic name, or not covered."}</p>` : ""}</div>` : "";
       const betBlock = `<div><h3>Best covered substitutes</h3>${bets.length ? `<ol class="bets">${bets.map(x => { const e2 = eff(x.p); return `<li data-st="${e2.status}"><span class="bn">${esc(x.p.name)}</span><span class="capw">${capsule(e2)}</span><span class="bm">${esc(relDesc(x.i, x.p))}</span></li>`; }).join("")}</ol>` : `<p class="cur-conds">None of the substitutes turned up as covered on this list. Try Search the drug list below, or see the tips on exceptions.</p>`}</div>`;
       h += `<section class="sum two">${curBlock}${betBlock}</section>`;
     } else if (bets.length) {
