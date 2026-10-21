@@ -37,7 +37,7 @@ jobs:
 
       - name: Find the latest CMS release
         id: release
-        run: python tools/build_medicare.py --resolve-only >> "$GITHUB_OUTPUT"
+        run: python tools/build_medicare.py --resolve-only
 
       - name: Restore data from an earlier run
         id: cache

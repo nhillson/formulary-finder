@@ -57,6 +57,13 @@ def log(*a):
     print(*a, file=sys.stderr, flush=True)
 
 
+def note(msg, level="notice"):
+    """Log, and in GitHub Actions also post a run annotation (readable from the run page and the API)."""
+    log(msg)
+    if os.environ.get("GITHUB_ACTIONS"):
+        print(f"::{level}::{msg}", flush=True)
+
+
 def http_get(url, timeout=120, retries=3):
     for i in range(retries):
         try:
@@ -95,7 +102,7 @@ def find_releases():
                 if m:
                     found.append({"year": int(m.group(1)), "date": m.group(2), "url": url})
         if found:
-            log(f"Found {len(found)} {kind} release files in the CMS catalog")
+            note(f"Found {len(found)} {kind} release files in the CMS catalog")
             break
     if not found:
         raise SystemExit("No Part D formulary release found in the CMS catalog")
@@ -106,6 +113,15 @@ def find_releases():
     this_year = dt.date.today().year
     years = [y for y in sorted(latest) if y in (this_year, this_year + 1)] or [max(latest)]
     return [latest[y] for y in years]
+
+
+def emit_key(key):
+    out = os.environ.get("GITHUB_OUTPUT")
+    if out:
+        with open(out, "a") as f:
+            f.write(f"key={key}\n")
+    else:
+        print(f"key={key}")
 
 
 def release_key(releases):
@@ -232,7 +248,7 @@ def build_year(zip_path, year, date, out_dir, workdir):
         elif r.get("MA_REGION_CODE"):
             pl["st"] |= ma_region_states.get(r["MA_REGION_CODE"].lstrip("0"), set())
     wanted = {pl["f"] for pl in plans.values()}
-    log(f"{year}: {len(plans)} plans using {len(wanted)} drug lists")
+    note(f"{year}: {len(plans)} plans using {len(wanted)} drug lists; tables found: {', '.join(sorted(tables))}")
 
     forms, versions = {}, {}
     for r in read_rows(tables["formulary"]):
@@ -419,14 +435,14 @@ def main():
             releases = find_releases()
         except BaseException as e:  # noqa: BLE001
             if a.resolve_only:
-                print(f"key=unresolved-{dt.date.today():%Y%m%d}")
-                log(f"Couldn't read the CMS catalog: {e}")
+                emit_key(f"unresolved-{dt.date.today():%Y%m%d}")
+                note(f"Couldn't read the CMS catalog: {e}", "warning")
                 return
             raise
     if a.resolve_only:
-        print(f"key={release_key(releases)}")
+        emit_key(release_key(releases))
         for r in releases:
-            log(f"{r['year']}: release {r['date']} {r.get('url', '')}")
+            note(f"{r['year']} plan year: CMS release {r['date']} {r.get('url', '')}")
         return
 
     out = a.out
@@ -437,7 +453,7 @@ def main():
     drugs = build_drug_list(concepts)
     with open(os.path.join(out, "drugs.json"), "w") as f:
         json.dump(drugs, f, separators=(",", ":"))
-    log(f"Medication list: {len(drugs)} generics, {sum(len(b) for _, b in drugs)} brand names")
+    note(f"Medication list: {len(drugs)} generics, {sum(len(b) for _, b in drugs)} brand names")
     years, all_rx = [], set()
     with tempfile.TemporaryDirectory() as tmp:
         for r in releases:
@@ -460,10 +476,16 @@ def main():
                    "source": "CMS Monthly Prescription Drug Plan Formulary and Pharmacy Network Information; drug names from NLM RxNorm",
                    "years": sorted(years, key=lambda y: y["year"])}, f, indent=1)
     size = sum(os.path.getsize(os.path.join(dp, fn)) for dp, _, fns in os.walk(out) for fn in fns)
-    log(f"Done: {len(names)} of {len(all_rx)} drug names, {size / 1e6:.1f} MB total")
-    for y in years:
-        log(f"  {y}")
+    note(f"Done: {len(names)} of {len(all_rx)} drug names, {size / 1e6:.1f} MB total; " + "; ".join(f"{y['year']}: {y['plans']} plans, {y['formularies']} drug lists" for y in years))
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except SystemExit as e:
+        if e.code not in (None, 0):
+            note(f"Data build stopped: {e.code}", "error")
+        raise
+    except Exception as e:  # noqa: BLE001
+        note(f"Data build failed: {type(e).__name__}: {e}", "error")
+        raise
