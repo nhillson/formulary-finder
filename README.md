@@ -1,6 +1,6 @@
 # Formulary Finder
 
-Two pages: **Formulary Finder** (`index.html`) finds close substitutes for a prescription and checks them against a plan's drug list; **Part D Cost Estimator** (`cost.html`) ranks Medicare drug plans in your county by estimated yearly cost for your prescriptions.
+Two pages: **Formulary Finder** (`index.html`) finds close substitutes for a prescription and checks them against a plan's drug list; **Part D Cost Estimator** (`cost.html`) ranks Medicare drug plans in your county by estimated yearly cost for your prescriptions, and can swap in cheaper alternatives for each drug (other versions of the same drug, the same ingredient in another product, or similar drugs in the same class) to find each plan's lowest potential cost. Built-in drug classes live in `classes.js`, shared by both pages.
 
 Find close substitutes for a prescription, then check which ones your health plan's drug list (formulary) covers.
 

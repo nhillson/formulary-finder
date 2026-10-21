@@ -351,6 +351,7 @@ select:focus-visible{outline:2px solid var(--rx);outline-offset:2px}
   </footer>
 </div>
 
+<script src="classes.js"></script>
 <script>
 (() => {
 "use strict";
@@ -361,70 +362,7 @@ const tick = () => new Promise(r => setTimeout(r, 0));
 /* ---------- Built-in drug classes ----------
    [class name, uses, note shown before switching, words that mean "wrong form", members]
    member: display[=search term][!exclude|words]:Brand,Brand ; "/" joins combination ingredients */
-const USES = {
-  cholesterol: "high cholesterol", depression: "depression anxiety", bp: "blood pressure hypertension", acid: "acid reflux heartburn gerd ulcer",
-  t2d: "type 2 diabetes", weight: "weight loss obesity", insulin: "diabetes insulin", asthma: "asthma", copd: "copd emphysema", rescue: "rescue",
-  adhd: "adhd add attention", migraine: "migraine headache", migraineprev: "migraine prevention headache", clot: "blood clot afib stroke anticoagulant thinner",
-  psych: "schizophrenia bipolar psychosis", sleep: "insomnia sleep", pain: "pain arthritis inflammation", spasm: "muscle spasm back",
-  nerve: "nerve pain neuropathy fibromyalgia", thyroid: "thyroid hypothyroid", ed: "erectile", bph: "prostate bph urination",
-  oab: "overactive bladder incontinence", allergy: "allergies allergy hay fever", bone: "osteoporosis bone", autoimmune: "rheumatoid psoriasis psoriatic crohn colitis arthritis ankylosing",
-  glaucoma: "glaucoma eye pressure", dryeye: "dry eye", acne: "acne", herpes: "herpes cold sores shingles", gout: "gout uric", lowt: "low testosterone hypogonadism"
-};
-const RAW = [
- ["Statins","cholesterol","","","atorvastatin:Lipitor;rosuvastatin:Crestor,Ezallor;simvastatin:Zocor;pravastatin:Pravachol;lovastatin:Altoprev;pitavastatin:Livalo,Zypitamag;fluvastatin:Lescol XL"],
- ["Other cholesterol medicines","cholesterol","","","ezetimibe:Zetia;ezetimibe/simvastatin:Vytorin;evolocumab:Repatha;alirocumab:Praluent;inclisiran:Leqvio;bempedoic acid:Nexletol;bempedoic acid/ezetimibe:Nexlizet;icosapent ethyl:Vascepa"],
- ["SSRI antidepressants","depression","Antidepressants usually need a planned cross-taper; stopping one suddenly can cause withdrawal symptoms.","","sertraline:Zoloft;escitalopram:Lexapro;citalopram:Celexa;fluoxetine:Prozac;paroxetine:Paxil,Pexeva;fluvoxamine:"],
- ["SNRI antidepressants","depression","Antidepressants usually need a planned cross-taper; stopping one suddenly can cause withdrawal symptoms.","","venlafaxine:Effexor XR;desvenlafaxine:Pristiq;duloxetine:Cymbalta;levomilnacipran:Fetzima"],
- ["Other antidepressants and anxiety medicines","depression","Antidepressants usually need a planned cross-taper; stopping one suddenly can cause withdrawal symptoms.","","bupropion:Wellbutrin SR,Wellbutrin XL,Aplenzin,Forfivo XL;mirtazapine:Remeron;trazodone:;vortioxetine:Trintellix;vilazodone:Viibryd;buspirone:"],
- ["ACE inhibitors","bp","","","lisinopril:Zestril,Prinivil,Qbrelis;enalapril:Vasotec;ramipril:Altace;benazepril:Lotensin;quinapril:Accupril;fosinopril:;captopril:"],
- ["ARBs","bp","","","losartan:Cozaar;valsartan:Diovan;olmesartan:Benicar;irbesartan:Avapro;telmisartan:Micardis;candesartan:Atacand;azilsartan:Edarbi"],
- ["Calcium channel blockers","bp","","","amlodipine:Norvasc,Katerzia;nifedipine:Procardia XL,Adalat CC;felodipine:;diltiazem:Cardizem,Cardizem CD,Tiazac;verapamil:Calan SR"],
- ["Thiazide-type diuretics","bp","","","hydrochlorothiazide:;chlorthalidone:Thalitone;indapamide:"],
- ["Beta blockers","bp","Beta blockers shouldn't be stopped suddenly; a switch is usually done in one step by your prescriber.","","metoprolol succinate:Toprol XL;metoprolol tartrate:Lopressor;carvedilol:Coreg,Coreg CR;atenolol:Tenormin;bisoprolol:;nebivolol:Bystolic;propranolol:Inderal LA,InnoPran XL"],
- ["Proton pump inhibitors (PPIs)","acid","","","omeprazole:Prilosec;esomeprazole:Nexium;pantoprazole:Protonix;lansoprazole:Prevacid;rabeprazole:Aciphex;dexlansoprazole:Dexilant"],
- ["Other acid reducers","acid","","","famotidine:Pepcid;cimetidine:Tagamet;nizatidine:;vonoprazan:Voquezna"],
- ["GLP-1 and GIP/GLP-1 medicines","t2d,weight","Plans often cover the diabetes brands (Ozempic, Mounjaro) and the weight-loss brands (Wegovy, Zepbound) differently, even when the drug is the same.","","semaglutide:Ozempic,Wegovy,Rybelsus;tirzepatide:Mounjaro,Zepbound;dulaglutide:Trulicity;liraglutide:Victoza,Saxenda"],
- ["SGLT2 inhibitors","t2d","","","empagliflozin:Jardiance;dapagliflozin:Farxiga;canagliflozin:Invokana;ertugliflozin:Steglatro;bexagliflozin:Brenzavvy"],
- ["DPP-4 inhibitors","t2d","","","sitagliptin:Januvia,Zituvio;linagliptin:Tradjenta;saxagliptin:Onglyza;alogliptin:Nesina"],
- ["Other diabetes pills","t2d","","","metformin:Glucophage,Glumetza;glipizide:Glucotrol,Glucotrol XL;glimepiride:Amaryl;glyburide:Glynase;pioglitazone:Actos"],
- ["Long-acting insulins","insulin","Different brands of the same insulin can need a dose or pen change; your prescriber writes the switch.","","insulin glargine:Lantus,Basaglar,Semglee,Rezvoglar,Toujeo;insulin degludec:Tresiba"],
- ["Rapid-acting insulins","insulin","Different brands of the same insulin can need a dose or pen change; your prescriber writes the switch.","","insulin lispro:Humalog,Admelog,Lyumjev;insulin aspart:Novolog,Fiasp;insulin glulisine:Apidra"],
- ["ICS/LABA inhalers","asthma,copd","Inhalers differ in device, puffs per day and technique, so a switch means a new prescription and a quick lesson on the new device.","","budesonide/formoterol:Symbicort,Breyna;fluticasone/salmeterol:Advair Diskus,Advair HFA,Wixela Inhub,AirDuo RespiClick;mometasone/formoterol:Dulera;fluticasone/vilanterol:Breo Ellipta"],
- ["Inhaled steroids","asthma","","nasal|spray|nose|cream|oint|ointment|lotion|rectal|foam|inj|ec|dr","fluticasone propionate:Flovent,ArmonAir Digihaler;fluticasone furoate:Arnuity Ellipta;beclomethasone:Qvar RediHaler;mometasone:Asmanex Twisthaler,Asmanex HFA;budesonide:Pulmicort Flexhaler"],
- ["Triple-therapy inhalers","asthma,copd","","","fluticasone/umeclidinium/vilanterol:Trelegy Ellipta;budesonide/glycopyrrolate/formoterol:Breztri Aerosphere"],
- ["LAMA inhalers","copd","","","tiotropium:Spiriva HandiHaler,Spiriva Respimat;umeclidinium:Incruse Ellipta;umeclidinium/vilanterol:Anoro Ellipta;tiotropium/olodaterol:Stiolto Respimat"],
- ["Rescue inhalers","rescue","","","albuterol:Ventolin HFA,ProAir RespiClick,Proventil HFA;levalbuterol:Xopenex HFA;albuterol/budesonide:Airsupra"],
- ["Leukotriene blockers","asthma,allergy","","","montelukast:Singulair;zafirlukast:Accolate"],
- ["ADHD stimulants","adhd","Short- and long-acting versions don't convert milligram for milligram; a switch needs a new prescription and some dose adjusting.","","methylphenidate:Ritalin,Ritalin LA,Concerta,Methylin,Aptensio XR,Jornay PM,Quillichew ER,Cotempla XR-ODT,Daytrana;dexmethylphenidate:Focalin,Focalin XR;amphetamine/dextroamphetamine:Adderall,Adderall XR,Mydayis;lisdexamfetamine:Vyvanse;dextroamphetamine:Dexedrine,Zenzedi,Xelstrym;amphetamine:Evekeo,Adzenys XR-ODT,Dyanavel XR"],
- ["ADHD non-stimulants","adhd","","","atomoxetine:Strattera;viloxazine:Qelbree;guanfacine:Intuniv;clonidine:Onyda XR"],
- ["Triptans","migraine","","","sumatriptan:Imitrex,Tosymra;rizatriptan:Maxalt,Maxalt-MLT;zolmitriptan:Zomig;eletriptan:Relpax;naratriptan:Amerge;almotriptan:;frovatriptan:Frova"],
- ["Newer migraine attack medicines","migraine","","","rimegepant:Nurtec ODT;ubrogepant:Ubrelvy;zavegepant:Zavzpret;lasmiditan:Reyvow"],
- ["Migraine prevention (CGRP)","migraineprev","","","erenumab:Aimovig;fremanezumab:Ajovy;galcanezumab:Emgality;eptinezumab:Vyepti;atogepant:Qulipta;rimegepant:Nurtec ODT"],
- ["Blood thinners","clot","Switching blood thinners needs careful timing to avoid a gap in protection; only do it with your prescriber.","","apixaban:Eliquis;rivaroxaban:Xarelto;dabigatran:Pradaxa;edoxaban:Savaysa;warfarin:Jantoven"],
- ["Antipsychotics (second generation)","psych","Switching antipsychotics is usually done gradually under your prescriber's care.","","aripiprazole:Abilify;quetiapine:Seroquel,Seroquel XR;olanzapine:Zyprexa;risperidone:Risperdal;ziprasidone:Geodon;lurasidone:Latuda;brexpiprazole:Rexulti;cariprazine:Vraylar;paliperidone:Invega;lumateperone:Caplyta;asenapine:Saphris;iloperidone:Fanapt;olanzapine/samidorphan:Lybalvi"],
- ["Sleep medicines","sleep","","","zolpidem:Ambien,Ambien CR,Edluar;eszopiclone:Lunesta;zaleplon:;suvorexant:Belsomra;lemborexant:Dayvigo;daridorexant:Quviviq;ramelteon:Rozerem;doxepin:Silenor"],
- ["NSAIDs","pain","","","ibuprofen:Motrin;naproxen:Naprosyn,Anaprox DS;meloxicam:Mobic;celecoxib:Celebrex;diclofenac:Voltaren,Cambia,Zorvolex;etodolac:;nabumetone:;indomethacin:"],
- ["Muscle relaxants","spasm","","","cyclobenzaprine:Amrix,Fexmid;methocarbamol:Robaxin;tizanidine:Zanaflex;baclofen:Ozobax,Fleqsuvy,Lyvispah;metaxalone:Skelaxin;carisoprodol:Soma"],
- ["Nerve pain medicines","nerve","","","gabapentin:Neurontin,Gralise;gabapentin enacarbil:Horizant;pregabalin:Lyrica,Lyrica CR;duloxetine:Cymbalta"],
- ["Thyroid hormone","thyroid","Switching thyroid brands usually means a blood test (TSH) about six weeks later.","","levothyroxine:Synthroid,Levoxyl,Unithroid,Euthyrox,Tirosint;liothyronine:Cytomel;desiccated thyroid=thyroid!levothyroxine|liothyronine|stimulating:Armour Thyroid,NP Thyroid"],
- ["Erectile dysfunction medicines","ed","Many plans exclude these or cap the number of doses per month.","","sildenafil:Viagra;tadalafil:Cialis;vardenafil:;avanafil:Stendra"],
- ["Enlarged prostate (BPH) medicines","bph","","","tamsulosin:Flomax;alfuzosin:Uroxatral;silodosin:Rapaflo;doxazosin:Cardura;terazosin:;finasteride:Proscar;dutasteride:Avodart;dutasteride/tamsulosin:Jalyn"],
- ["Overactive bladder medicines","oab","","","oxybutynin:Ditropan XL,Oxytrol;tolterodine:Detrol,Detrol LA;solifenacin:Vesicare;trospium:;darifenacin:Enablex;fesoterodine:Toviaz;mirabegron:Myrbetriq;vibegron:Gemtesa"],
- ["Nasal steroid sprays","allergy","","hfa|inhal\\w*|inhaler|diskus|ellipta|respules|neb|powder|cream|oint|ointment|lotion|inj|paste|ec|dr|rectal|foam|tab|tabs|cap|caps","fluticasone propionate:Flonase;fluticasone furoate:Flonase Sensimist;mometasone:Nasonex;budesonide:Rhinocort;triamcinolone:Nasacort;beclomethasone:Qnasl,Beconase AQ;azelastine/fluticasone:Dymista;olopatadine/mometasone:Ryaltris"],
- ["Antihistamines","allergy","Most of these are sold over the counter, and many plans don't cover them.","","cetirizine:Zyrtec;levocetirizine:Xyzal;loratadine:Claritin;desloratadine:Clarinex;fexofenadine:Allegra;azelastine:Astepro"],
- ["Bisphosphonates","bone","","","alendronate:Fosamax,Binosto;risedronate:Actonel,Atelvia;ibandronate:Boniva;zoledronic acid:Reclast"],
- ["Other osteoporosis medicines","bone","","","denosumab:Prolia,Jubbonti;teriparatide:Forteo;abaloparatide:Tymlos;romosozumab:Evenity;raloxifene:Evista"],
- ["TNF blockers","autoimmune","Biosimilars of the same drug, like the Humira biosimilars, are often the plan's preferred version and are the closest possible switch.","","adalimumab:Humira,Amjevita,Cyltezo,Hadlima,Hulio,Hyrimoz,Idacio,Yuflyma,Yusimry,Simlandi;etanercept:Enbrel;certolizumab:Cimzia;golimumab:Simponi;infliximab:Remicade,Inflectra,Renflexis,Avsola,Zymfentra"],
- ["IL-17, IL-23 and IL-12/23 biologics","autoimmune","Which of these fit depends on your exact condition. Biosimilars of the same drug are the closest switch.","","secukinumab:Cosentyx;ixekizumab:Taltz;bimekizumab:Bimzelx;brodalumab:Siliq;guselkumab:Tremfya;risankizumab:Skyrizi;tildrakizumab:Ilumya;mirikizumab:Omvoh;ustekinumab:Stelara,Wezlana,Selarsdi,Pyzchiva,Otulfi,Imuldosa,Yesintek,Steqeyma"],
- ["Oral targeted immune medicines","autoimmune","Which of these fit depends on your exact condition.","","tofacitinib:Xeljanz;upadacitinib:Rinvoq;baricitinib:Olumiant;apremilast:Otezla;deucravacitinib:Sotyktu"],
- ["Glaucoma eye drops","glaucoma","","","latanoprost:Xalatan,Xelpros,Iyuzeh;bimatoprost:Lumigan;travoprost:Travatan Z;tafluprost:Zioptan;latanoprostene bunod:Vyzulta;timolol:Timoptic;dorzolamide:Trusopt;brimonidine:Alphagan P;netarsudil:Rhopressa"],
- ["Dry eye drops","dryeye","","cap|caps|capsule|oral|inj|tab|tabs|tablet|modified","cyclosporine:Restasis,Cequa,Vevye;lifitegrast:Xiidra;perfluorohexyloctane:Miebo;varenicline:Tyrvaya"],
- ["Topical retinoids (acne)","acne","","cap|caps|capsule","tretinoin:Retin-A,Altreno,Atralin;adapalene:Differin;tazarotene:Tazorac,Arazlo;trifarotene:Aklief"],
- ["Herpes antivirals","herpes","","","valacyclovir:Valtrex;acyclovir:Zovirax,Sitavig;famciclovir:"],
- ["Gout (urate-lowering)","gout","","","allopurinol:Zyloprim;febuxostat:Uloric;probenecid:"],
- ["Weight-loss medicines (non-GLP-1)","weight","","","phentermine/topiramate:Qsymia;naltrexone/bupropion:Contrave;phentermine:Adipex-P,Lomaira;orlistat:Xenical,Alli"],
- ["Testosterone","lowt","Forms differ a lot (weekly shots, daily gel, pills), so a switch changes the routine and the dose.","","testosterone cypionate:Depo-Testosterone,Azmiro;testosterone enanthate:Xyosted;testosterone undecanoate:Jatenzo,Tlando,Kyzatrex,Aveed;testosterone (gel, patch, nasal)=testosterone!cypionate|enanthate|undecanoate|pellets?|implant:AndroGel,Testim,Vogelxo,Fortesta,Androderm,Natesto"]
-];
+const { USES, RAW } = window.FF_DATA;
 function parseMember(s) {
   const k = s.indexOf(":");
   const left = k < 0 ? s : s.slice(0, k);
