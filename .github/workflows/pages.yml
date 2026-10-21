@@ -1,0 +1,88 @@
+name: Build and deploy site
+
+# Rebuilds the Medicare plan data and medication list from CMS and NLM RxNorm,
+# then publishes the site to GitHub Pages. Runs on every push to main, twice a
+# week to pick up new monthly CMS releases, and on demand from the Actions tab.
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "23 10 * * 1,4"
+  workflow_dispatch:
+    inputs:
+      rebuild:
+        description: "Rebuild the data even if the CMS release hasn't changed"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Find the latest CMS release
+        id: release
+        run: python tools/build_medicare.py --resolve-only >> "$GITHUB_OUTPUT"
+
+      - name: Restore data from an earlier run
+        id: cache
+        uses: actions/cache/restore@v4
+        with:
+          path: site-data
+          key: data-v1-${{ steps.release.outputs.key }}
+          restore-keys: |
+            data-v1-${{ steps.release.outputs.key }}-
+            data-v1-
+
+      - name: Build Medicare data and medication list
+        id: build
+        if: ${{ !startsWith(steps.cache.outputs.cache-matched-key, format('data-v1-{0}-', steps.release.outputs.key)) || inputs.rebuild }}
+        continue-on-error: true
+        run: |
+          df -h . | tail -1
+          python tools/build_medicare.py --out site-data-new
+          rm -rf site-data
+          mv site-data-new site-data
+
+      - name: Save data for later runs
+        if: steps.build.outcome == 'success' && !startsWith(steps.release.outputs.key, 'unresolved')
+        uses: actions/cache/save@v4
+        with:
+          path: site-data
+          key: data-v1-${{ steps.release.outputs.key }}-${{ github.run_id }}
+
+      - name: Assemble site
+        run: |
+          mkdir -p _site
+          cp index.html .nojekyll _site/
+          if [ -d site-data ]; then cp -r site-data _site/data; du -sh _site/data; else echo "No data yet; publishing the page without Medicare data"; fi
+          if [ "${{ steps.build.outcome }}" = "failure" ]; then echo "::warning::Data build failed; published the previous data (if any)"; fi
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

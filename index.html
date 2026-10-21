@@ -34,6 +34,7 @@ img{max-width:100%}
   --bad:#A2302A; --bad-soft:#F7E1DF;
   --none:#687384; --none-soft:#E9EDF1;
   --hl:#FFE08A;
+  --shadow:0 10px 28px rgba(19,35,58,.16);
   --display:"Archivo","Helvetica Neue",Arial,sans-serif;
   --body:"Public Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
   --mono:"IBM Plex Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
@@ -43,7 +44,7 @@ img{max-width:100%}
     --paper:#0E151E; --label:#151F2B; --ink:#E5EBF2; --ink-2:#A6B2C2; --ink-3:#8392A4; --rule:#2A3747; --rule-2:#202C3A;
     --rx:#8EA6FF; --rx-strong:#B4C4FF; --rx-ink:#0E1730; --rx-soft:#1B2847;
     --ok:#5FCB92; --ok-soft:#14301F; --warn:#F0AC52; --warn-soft:#3A2810; --bad:#F08A80; --bad-soft:#3A1A17; --none:#98A4B4; --none-soft:#222D3A;
-    --hl:#6B5413;
+    --hl:#6B5413; --shadow:0 10px 28px rgba(0,0,0,.5);
     color-scheme:dark;
   }
 }
@@ -51,7 +52,7 @@ img{max-width:100%}
   --paper:#0E151E; --label:#151F2B; --ink:#E5EBF2; --ink-2:#A6B2C2; --ink-3:#8392A4; --rule:#2A3747; --rule-2:#202C3A;
   --rx:#8EA6FF; --rx-strong:#B4C4FF; --rx-ink:#0E1730; --rx-soft:#1B2847;
   --ok:#5FCB92; --ok-soft:#14301F; --warn:#F0AC52; --warn-soft:#3A2810; --bad:#F08A80; --bad-soft:#3A1A17; --none:#98A4B4; --none-soft:#222D3A;
-  --hl:#6B5413;
+  --hl:#6B5413; --shadow:0 10px 28px rgba(0,0,0,.5);
   color-scheme:dark;
 }
 *{box-sizing:border-box}
@@ -66,8 +67,8 @@ h1{margin:0;font-family:var(--display);font-stretch:125%;font-weight:800;font-si
 @media (min-width:920px){.bench{grid-template-columns:350px minmax(0,1fr);align-items:start}}
 
 /* Rx label */
-.rxlabel{background:var(--label);border:1px solid var(--rule);border-radius:12px;overflow:hidden;min-width:0}
-.rxhead{display:flex;justify-content:space-between;gap:12px;padding:9px 16px;background:var(--rx);color:var(--rx-ink);font-family:var(--mono);font-size:11.5px;letter-spacing:.09em;text-transform:uppercase}
+.rxlabel{background:var(--label);border:1px solid var(--rule);border-radius:12px;min-width:0}
+.rxhead{border-radius:11px 11px 0 0;display:flex;justify-content:space-between;gap:12px;padding:9px 16px;background:var(--rx);color:var(--rx-ink);font-family:var(--mono);font-size:11.5px;letter-spacing:.09em;text-transform:uppercase}
 .fields{display:grid;gap:16px;padding:18px 16px}
 .field{display:grid;gap:6px;min-width:0}
 .field > label,.flabel{font-family:var(--mono);font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2)}
@@ -207,6 +208,28 @@ mark{background:var(--hl);color:var(--ink);border-radius:2px;padding:0 1px}
 .codes dt{font-family:var(--mono);font-weight:500;color:var(--rx)}
 .codes dd{margin:0;color:var(--ink-2)}
 footer p{margin:0;font-size:13px;color:var(--ink-3);max-width:78ch}
+
+/* Medication suggestions */
+.acfield{position:relative}
+.ac{position:absolute;left:0;right:0;top:100%;margin:4px 0 0;padding:4px;list-style:none;z-index:30;background:var(--label);border:1px solid var(--rule);border-radius:10px;box-shadow:var(--shadow);max-height:min(340px,52vh);overflow:auto}
+.ac li{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:2px 12px;padding:9px 10px;border-radius:7px;cursor:pointer}
+.ac li[aria-selected="true"],.ac li[data-i]:hover{background:var(--rx-soft)}
+.ac .an{font-weight:600;color:var(--ink);overflow-wrap:anywhere}
+.ac .ag{font-size:12.5px;color:var(--ink-3);overflow-wrap:anywhere}
+.ac li.ah{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);padding:6px 10px 2px;cursor:default}
+.dym{font:inherit;font-weight:600;color:var(--rx);background:none;border:0;padding:0;text-decoration:underline;text-underline-offset:2px;cursor:pointer}
+
+/* Medicare plan picker */
+.medibox{display:grid;gap:8px}
+.medrow{display:flex;gap:8px;flex-wrap:wrap}
+select{font:inherit;font-size:15px;color:var(--ink);background:var(--paper);border:1px solid var(--rule);border-radius:8px;padding:8px 10px;flex:1 1 140px;min-width:0}
+select:focus-visible{outline:2px solid var(--rx);outline-offset:2px}
+.mres{display:grid;gap:6px;max-height:360px;overflow:auto}
+.mplan{display:grid;gap:2px;text-align:left;font:inherit;padding:9px 11px;border:1px solid var(--rule);border-radius:8px;background:var(--paper);color:var(--ink);cursor:pointer}
+.mplan:hover{border-color:var(--rx)}
+.mplan:focus-visible{outline:2px solid var(--rx);outline-offset:2px}
+.mp-n{font-weight:600;font-size:14.5px;overflow-wrap:anywhere}
+.mp-m{font-size:12.5px;color:var(--ink-3);overflow-wrap:anywhere}
 </style>
 
 </head>
@@ -221,9 +244,10 @@ footer p{margin:0;font-size:13px;color:var(--ink-3);max-width:78ch}
     <form class="rxlabel" id="f" novalidate>
       <div class="rxhead"><span>Coverage check</span><span id="rxdate"></span></div>
       <div class="fields">
-        <div class="field">
+        <div class="field acfield">
           <label for="drug">Medication you take</label>
-          <input id="drug" type="text" autocomplete="off" spellcheck="false" placeholder="Brand or generic, e.g. Lexapro" value="Symbicort">
+          <input id="drug" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Start typing a brand or generic name" value="Symbicort" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="drug-ac">
+          <ul class="ac" id="drug-ac" role="listbox" aria-label="Medication suggestions" hidden></ul>
         </div>
         <div class="field">
           <label for="use">What it's for <span class="opt">optional</span></label>
@@ -237,18 +261,30 @@ footer p{margin:0;font-size:13px;color:var(--ink-3);max-width:78ch}
               <button type="button" class="btn-sm" id="pickfile">Upload PDF</button>
               <input id="file" type="file" accept=".pdf,application/pdf,.txt,.csv,text/plain" class="vh" tabindex="-1" aria-hidden="true">
               <button type="button" class="btn-sm ghost" id="pastebtn">Paste text</button>
+              <button type="button" class="btn-sm ghost" id="medbtn" aria-expanded="false" aria-controls="medibox">Medicare plan</button>
               <button type="button" class="btn-sm ghost" id="clearlist">Remove</button>
             </div>
             <div class="pastebox" id="pastebox" hidden>
               <textarea id="paste" rows="5" placeholder="Paste the drug list text from your plan's website"></textarea>
               <div class="row"><button type="button" class="btn-sm" id="pasteuse">Use this text</button></div>
             </div>
-            <p class="hint">On your plan's member site, look under Pharmacy for the formulary, drug list, or preferred drug list. Use this year's list for your exact plan. The file is read in this browser and isn't uploaded.</p>
+            <div class="medibox" id="medibox" hidden>
+              <div class="medrow">
+                <label class="vh" for="myear">Plan year</label><select id="myear"></select>
+                <label class="vh" for="mstate">State</label><select id="mstate"><option value="">Any state</option></select>
+              </div>
+              <label class="vh" for="mq">Plan ID or plan name</label>
+              <input id="mq" type="search" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Plan ID (S1234-001) or plan name">
+              <div class="mres" id="mres" aria-live="polite"></div>
+              <p class="hint">From Medicare's public plan data, updated monthly. Covers stand-alone drug plans (PDP) and Medicare Advantage plans with drug coverage. Employer group plans aren't included.</p>
+            </div>
+            <p class="hint">Medicare drug plan? Tap Medicare plan to load its list automatically. For other insurance, look on your plan's member site under Pharmacy for the formulary or drug list. Files are read in this browser and aren't uploaded.</p>
           </div>
         </div>
-        <div class="field">
+        <div class="field acfield">
           <label for="extra">Also check <span class="opt">optional</span></label>
-          <input id="extra" type="text" autocomplete="off" placeholder="Names your doctor mentioned, comma separated">
+          <input id="extra" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Names your doctor mentioned, comma separated" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="extra-ac">
+          <ul class="ac" id="extra-ac" role="listbox" aria-label="Medication suggestions" hidden></ul>
         </div>
         <div class="claudeopt" id="claudeopt" hidden>
           <label class="check"><input type="checkbox" id="claudeOn" checked> <span id="claudelabel">Use Claude to find substitutes and read the plan's codes</span></label>
@@ -308,7 +344,7 @@ footer p{margin:0;font-size:13px;color:var(--ink-3);max-width:78ch}
   </div>
 
   <footer>
-    <p>Substitutes come from a built-in list of about 50 common drug classes, or from Claude if you add an API key. This isn't medical advice: a close substitute can still differ in dose, timing, side effects, or interactions, so make any switch with your prescriber. The coverage check reads text, so it can miss a drug listed under another name, and it can't see your copay.</p>
+    <p>Substitutes come from a built-in list of about 50 common drug classes, or from Claude if you add an API key. This isn't medical advice: a close substitute can still differ in dose, timing, side effects, or interactions, so make any switch with your prescriber. The coverage check reads text, so it can miss a drug listed under another name, and it can't see your copay. Medicare plan data comes from CMS; medication names come from the National Library of Medicine's RxNorm.</p>
   </footer>
 </div>
 
@@ -397,9 +433,9 @@ function parseMember(s) {
 const CLASSES = RAW.map(r => ({ name: r[0], uses: r[1].split(","), note: r[2], ex: r[3] ? r[3].split("|").filter(Boolean) : [], members: r[4].split(";").map(parseMember) }));
 
 /* ---------- Name matching ---------- */
-const SALT = "(?:propionate|furoate|fumarate|dihydrate|sodium|calcium|potassium|magnesium|hcl|hydrochloride|sulfate|maleate|besylate|succinate|tartrate|mesylate|acetate|bromide|xinafoate|dipropionate|monohydrate|hydrobromide|citrate|phosphate|trihydrate|er|xr|sr|dr|hfa)";
-const COMBO_AFTER = new RegExp("^(?:\\s+" + SALT + "\\b)*\\s*(?:[-\\/]|\\band\\b)\\s*[a-z]{5,}");
-const COMBO_BEFORE = new RegExp("[a-z]{5,}(?:\\s+" + SALT + ")*\\s*(?:[-\\/]|\\band)\\s*$");
+const SALT = "(?:propionate|furoate|fumarate|dihydrate|sodium|calcium|potassium|magnesium|hcl|hydrochloride|sulfate|maleate|besylate|succinate|tartrate|mesylate|acetate|bromide|xinafoate|dipropionate|monohydrate|hydrobromide|citrate|phosphate|trihydrate|hemihydrate|aspartate|saccharate|bitartrate|dimesylate|chloride|carbonate|gluconate|lactate|oxalate|valerate|benzoate|hyclate|er|xr|sr|dr|hfa)";
+const COMBO_AFTER = new RegExp("^(?:[\\s,]+" + SALT + "\\b)*\\s*(?:[-\\/]|\\band\\b)\\s*[a-z]{5,}");
+const COMBO_BEFORE = new RegExp("[a-z]{5,}(?:[\\s,]+" + SALT + ")*\\s*(?:[-\\/]|\\band)\\s*$");
 const reEsc = s => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const normWords = s => String(s || "").toLowerCase().replace(/[\/\-]/g, " ").replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
 const phrase = s => normWords(s).split(" ").filter(Boolean).map(reEsc).join("[\\s\\-]*");
@@ -408,7 +444,7 @@ function makeMatcher(term, generic) {
   const parts = String(term).split("/").map(s => s.trim()).filter(Boolean);
   if (!parts.length) return null;
   if (parts.length > 1) {
-    const sep = "(?:\\s+" + SALT + "\\b)*\\s*(?:[-\\/,]|\\band\\b)\\s*";
+    const sep = "(?:[\\s,]+" + SALT + "\\b)*\\s*(?:[-\\/,]|\\band\\b)\\s*";
     const alts = perms(parts.slice(0, 3)).map(p => p.map(phrase).join(sep));
     return { re: new RegExp("\\b(?:" + alts.join("|") + ")\\b", "gi"), single: false };
   }
@@ -611,6 +647,11 @@ function planFromBuiltIn(drug, use) {
   const ings = []; const seen = new Set();
   const add = (ing) => { const k = normWords(ing.g); if (seen.has(k)) return false; seen.add(k); ings.push(ing); return true; };
   if (!H.length) {
+    const d = medLookup(drug);
+    if (d) {
+      add(mkIng(d.g, d.g, d.brands, "same_drug", "", "", null));
+      return { drug, recognized: false, partial: true, drugClass: "", caution: "", source: "builtin", ings };
+    }
     add(mkIng(drug, drug, [], "same_drug", "", "", null, true));
     return { drug, recognized: false, drugClass: "", caution: "", source: "builtin", ings };
   }
@@ -788,7 +829,7 @@ function hl(h) {
 }
 function linesHTML(hits, max) {
   if (!hits.length) return "";
-  return `<div class="lines">${hits.slice(0, max).map(h => `<div class="ln"><span class="pg">p.${esc(h.p)}</span><code>${hl(h)}</code></div>`).join("")}${hits.length > max ? `<div class="more">+${hits.length - max} more line${hits.length - max === 1 ? "" : "s"}</div>` : ""}</div>`;
+  return `<div class="lines">${hits.slice(0, max).map(h => `<div class="ln"><span class="pg">${h.p ? "p." + esc(h.p) : "·"}</span><code>${hl(h)}</code></div>`).join("")}${hits.length > max ? `<div class="more">+${hits.length - max} more line${hits.length - max === 1 ? "" : "s"}</div>` : ""}</div>`;
 }
 function prodHTML(p, ing) {
   const e = eff(p);
@@ -869,10 +910,11 @@ function render() {
   const bets = picks(plan);
   let h = `<div class="rhead"><p class="kicker">${plan.example ? "Example · fictional plan" : plan.checked ? "Substitutes and coverage" : "Substitutes"}</p><h2>${esc(cur ? cur.p.name : plan.drug)}</h2><p class="meta">${plan.drugClass ? esc(plan.drugClass) + " · " : ""}${plan.source === "claude" ? "Substitutes from Claude" : "Substitutes from the built-in drug classes"}${plan.checked ? " · checked against " + esc(list.name) : ""}</p></div>`;
   if (plan.example) h += `<p class="example">This example uses a made-up drug list so you can see how it reads. Type your medication, and upload your plan's list to check real coverage.</p>`;
-  if (!plan.recognized) h += `<p class="notice">${esc(plan.drug)} isn't in the built-in drug classes${sample && !$("#claudeopt").hidden ? ", and Claude was off or didn't recognize it" : ""}. ${plan.checked ? "Only the name itself was searched. " : ""}Check the spelling, or add names under Also check.${!sample && !$("#keybox").hidden ? " To look up any medication, add an Anthropic API key in the form." : ""}</p>`;
+  if (plan.partial) h += `<p class="notice">${esc(plan.drug)} isn't in the built-in drug classes, so this shows other versions of the same medicine but not similar drugs.${!sample && !$("#keybox").hidden ? " Add an Anthropic API key in the form to get similar drugs too." : ""}</p>`;
+  else if (!plan.recognized) h += `<p class="notice">${plan.dym ? `Did you mean <button type="button" class="dym" data-dym="${esc(plan.dym)}">${esc(plan.dym)}</button>? ` : ""}${esc(plan.drug)} isn't in the built-in drug classes${sample && !$("#claudeopt").hidden ? ", and Claude was off or didn't recognize it" : ""}. ${plan.checked ? "Only the name itself was searched. " : ""}Check the spelling, or add names under Also check.${!sample && !$("#keybox").hidden ? " To look up any medication, add an Anthropic API key in the form." : ""}</p>`;
   if (state.note) h += `<p class="notice">${esc(state.note)}</p>`;
 
-  if (plan.recognized || plan.checked) {
+  if (plan.recognized || plan.partial || plan.checked) {
     if (plan.checked) {
       const e = cur ? eff(cur.p) : null;
       const curBlock = cur ? `<div class="sum-cur"><h3>Your medication on this list</h3><div class="cur-row" data-st="${e.status}"><span class="cur-nm">${esc(cur.p.name)}</span><span class="st">${esc(statusText(e))}</span>${capsule(e)}</div>${e.conds.length ? `<p class="cur-conds">${e.conds.map(c => esc(c.text)).join(" · ")}</p>` : ""}${e.status === "notfound" ? `<p class="cur-conds">Not on this list under that name. It may be listed under its generic name, or not covered.</p>` : ""}</div>` : "";
@@ -885,14 +927,14 @@ function render() {
   if (state.read && state.read.summary) h += `<section class="read"><span class="who">Claude's read of your list</span><p>${esc(state.read.summary)}</p></section>`;
   if (plan.caution) h += `<p class="caution"><b>Before switching:</b> ${esc(plan.caution)}</p>`;
   GROUPS.forEach(([k, c, t, s]) => { h += groupHTML(plan, k, c, t, s); });
-  if (plan.recognized || plan.checked) h += `<section class="note"><h2 class="gt">Note for your prescriber</h2><p class="gs">Edit it, then paste into your patient portal or bring it to your appointment.</p><textarea id="notetext" rows="10">${esc(noteText(plan))}</textarea><div class="row"><button type="button" class="btn-sm" id="copynote">Copy note</button><span class="hint" id="copied" aria-live="polite"></span></div></section>`;
+  if (plan.recognized || plan.partial || plan.checked) h += `<section class="note"><h2 class="gt">Note for your prescriber</h2><p class="gs">Edit it, then paste into your patient portal or bring it to your appointment.</p><textarea id="notetext" rows="10">${esc(noteText(plan))}</textarea><div class="row"><button type="button" class="btn-sm" id="copynote">Copy note</button><span class="hint" id="copied" aria-live="polite"></span></div></section>`;
   R.innerHTML = h;
   $("#go").textContent = state.list ? "Find substitutes & check coverage" : "Find substitutes";
 }
 function renderList() {
   const L = state.list;
   $("#listinfo").innerHTML = L
-    ? `<div class="li-name">${L.example ? '<span class="tag">Example</span>' : ""}<span>${esc(L.name)}</span></div><div class="li-meta">${L.pages} page${L.pages === 1 ? "" : "s"} · ${L.lines.length.toLocaleString()} lines of text</div>`
+    ? `<div class="li-name">${L.example ? '<span class="tag">Example</span>' : L.medicare ? '<span class="tag">Medicare ' + esc(L.medicare.year) + '</span>' : ""}<span>${esc(L.name)}</span></div><div class="li-meta">${L.medicare ? `${esc(L.medicare.id)} · ${L.lines.length.toLocaleString()} drugs · CMS data ${esc(fmtRelease(L.medicare.release))}` : `${L.pages} page${L.pages === 1 ? "" : "s"} · ${L.lines.length.toLocaleString()} lines of text`}</div>`
     : `<p class="li-empty">No list loaded. You'll still get substitutes; add a list to check coverage.</p>`;
   $("#clearlist").hidden = !L;
 }
@@ -948,6 +990,7 @@ Rules:
 - If you don't recognize the medication, reply {"recognized": false, "alternatives": []}.`;
 }
 function legendText(list) {
+  if (list.legend) return list.legend;
   const pages = [...new Set(list.lines.map(l => l.p))].slice(0, 8);
   const re = /tier|prior auth|step therap|quantity limit|\bPA\b|\bST\b|\bQL\b|\bSP\b|specialty|preferred|non-?formulary|excluded|\bNF\b/i;
   const out = [];
@@ -968,7 +1011,7 @@ function promptB(plan, list) {
     if (!p.hits.length) rows.push("  (no lines found)");
     else p.hits.slice(0, 4).forEach(h => rows.push(`  p.${h.p}: ${h.text.slice(0, 200)}`));
   }
-  return `A patient searched their health plan's drug list (formulary) for their current medication and possible substitutes. The list was extracted from a PDF as plain text, so table columns may run together. For each product below you get the lines the search found.
+  return `A patient searched their health plan's drug list (formulary) for their current medication and possible substitutes. ${list.medicare ? "The list comes from Medicare's public plan data: one line per drug product with its tier and codes." : "The list was extracted from a PDF as plain text, so table columns may run together."} For each product below you get the lines the search found.
 
 Lines from the front of the document that may explain tiers and codes:
 <<<
@@ -1024,7 +1067,11 @@ async function check(opts = {}) {
         if (!plan) state.note = "Claude didn't recognize that name, so the built-in drug classes were used.";
       } catch (e) { state.note = claudeErr(e, "alt"); }
     }
-    if (!plan) plan = planFromBuiltIn(drug, use);
+    if (!plan) { await medsReady(2000); plan = planFromBuiltIn(drug, use); }
+    if (!plan.recognized && !plan.partial) {
+      const best = suggest(drug, 1)[0];
+      if (best && normWords(best.e.n) !== normWords(drug)) plan.dym = best.e.n;
+    }
     addExtras(plan, extras);
     finishPlan(plan);
     plan.example = !!(list && list.example);
@@ -1115,7 +1162,7 @@ $("#rxdate").textContent = new Date().toLocaleDateString(undefined, { month: "sh
 $("#f").addEventListener("submit", e => { e.preventDefault(); check(); });
 $("#pickfile").addEventListener("click", () => $("#file").click());
 $("#file").addEventListener("change", e => loadFile(e.target.files && e.target.files[0]));
-$("#pastebtn").addEventListener("click", () => { const b = $("#pastebox"); b.hidden = !b.hidden; if (!b.hidden) $("#paste").focus(); });
+$("#pastebtn").addEventListener("click", () => { const b = $("#pastebox"); b.hidden = !b.hidden; if (!b.hidden) { $("#medibox").hidden = true; $("#medbtn").setAttribute("aria-expanded", "false"); $("#paste").focus(); } });
 $("#pasteuse").addEventListener("click", () => {
   const res = linesFromText($("#paste").value);
   if (!res.lines.length) { setStatus("Paste the drug list text first."); return; }
@@ -1137,6 +1184,233 @@ $("#readout").addEventListener("click", e => {
     navigator.clipboard.writeText(ta.value).then(() => { done.textContent = "Copied"; }, fallback);
   } catch (err) { fallback(); }
 });
+
+/* ---------- Medication names: built-in list plus data/drugs.json (NLM RxNorm) ---------- */
+const DATA = "data/";
+const MEDS = { list: [], seen: new Set(), byGeneric: new Map(), loading: null };
+function phon(s) {
+  return normWords(s).replace(/ /g, "").replace(/ph/g, "f").replace(/th/g, "t").replace(/ck/g, "k")
+    .replace(/c(?=[eiy])/g, "s").replace(/c/g, "k").replace(/qu/g, "kw").replace(/x/g, "ks").replace(/y/g, "i").replace(/z/g, "s")
+    .replace(/(.)\1+/g, "$1");
+}
+function addMed(name, generic, kind, common) {
+  const nl = normWords(name);
+  if (!nl || MEDS.seen.has(kind + "|" + nl)) return;
+  MEDS.seen.add(kind + "|" + nl);
+  const words = nl.split(" ");
+  MEDS.list.push({ n: name, g: generic, kind, common, nl, words, ph: phon(name), phw: words.length > 1 ? words.map(phon) : [] });
+  const gk = normWords(kind === "brand" ? generic : name);
+  if (!MEDS.byGeneric.has(gk)) MEDS.byGeneric.set(gk, { g: kind === "brand" ? generic : name, brands: [] });
+  if (kind === "brand") { const e = MEDS.byGeneric.get(gk); if (!e.brands.includes(name)) e.brands.push(name); }
+}
+CLASSES.forEach(c => c.members.forEach(m => { addMed(m.g, "", "generic", true); m.b.forEach(b => addMed(b, m.g, "brand", true)); }));
+function ensureMeds() {
+  if (MEDS.loading) return MEDS.loading;
+  MEDS.loading = (typeof fetch === "function" ? fetch(DATA + "drugs.json").then(r => r.ok ? r.json() : []) : Promise.resolve([]))
+    .then(rows => { if (Array.isArray(rows)) rows.forEach(([g, bs]) => { addMed(g, "", "generic", false); (bs || []).forEach(b => addMed(b, g, "brand", false)); }); })
+    .catch(() => {});
+  return MEDS.loading;
+}
+const medsReady = ms => Promise.race([ensureMeds(), new Promise(r => setTimeout(r, ms))]);
+function medLookup(text) {
+  const q = " " + normWords(text) + " ";
+  let best = null, len = 0;
+  for (const e of MEDS.list) if (e.nl.length >= 3 && e.nl.length > len && q.includes(" " + e.nl + " ")) { best = e; len = e.nl.length; }
+  if (!best) return null;
+  return MEDS.byGeneric.get(normWords(best.kind === "brand" ? best.g : best.n)) || null;
+}
+function prefixDist(a, b, max) {
+  const n = a.length, m = Math.min(b.length, n + max);
+  let pp = null, prev = new Array(m + 1);
+  for (let j = 0; j <= m; j++) prev[j] = j;
+  for (let i = 1; i <= n; i++) {
+    const cur = new Array(m + 1); cur[0] = i; let rowMin = i;
+    for (let j = 1; j <= m; j++) {
+      let v = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+      if (pp && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) v = Math.min(v, pp[j - 2] + 1);
+      cur[j] = v; if (v < rowMin) rowMin = v;
+    }
+    if (rowMin > max) return max + 1;
+    pp = prev; prev = cur;
+  }
+  let best = Infinity; for (let j = 0; j <= m; j++) best = Math.min(best, prev[j]);
+  return best;
+}
+function suggest(q, limit = 8) {
+  const nq = normWords(q);
+  if (nq.length < 2) return [];
+  const out = [];
+  for (const e of MEDS.list) {
+    let score = 0;
+    if (e.nl === nq) score = 1000;
+    else if (e.nl.startsWith(nq)) score = 900;
+    else if (e.words.some(w => w.startsWith(nq))) score = 800;
+    else if (nq.length >= 3 && e.nl.includes(nq)) score = 650;
+    if (score) out.push({ e, score: score + (e.common ? 40 : 0) - Math.min(e.n.length, 40) * 0.5, fuzzy: false });
+  }
+  if (out.length < limit) {
+    const pq = phon(q);
+    // Spelling-tolerant matches: looser for longer words, and only exact sound-alikes when something already starts with the text
+    const max = out.length ? 0 : pq.length <= 3 ? -1 : pq.length <= 7 ? 1 : pq.length <= 10 ? 2 : 3;
+    if (max >= 0 && pq.length >= 3) for (const e of MEDS.list) {
+      if (out.some(x => x.e === e)) continue;
+      let d = prefixDist(pq, e.ph, max);
+      for (const w of e.phw) { if (d <= 0) break; d = Math.min(d, prefixDist(pq, w, max)); }
+      if (d <= max) out.push({ e, score: 500 - d * 100 + (e.common ? 40 : 0) - Math.min(e.n.length, 40) * 0.5, fuzzy: true });
+    }
+  }
+  out.sort((a, b) => b.score - a.score);
+  const seen = new Set(), res = [];
+  for (const x of out) { const k = x.e.nl; if (seen.has(k)) continue; seen.add(k); res.push(x); if (res.length >= limit) break; }
+  return res;
+}
+function attachSuggest(input, list, multi) {
+  let items = [], active = -1, timer = null;
+  const term = () => multi ? input.value.split(",").pop().trim() : input.value.trim();
+  const close = () => { list.hidden = true; active = -1; input.setAttribute("aria-expanded", "false"); input.removeAttribute("aria-activedescendant"); };
+  const mark = () => {
+    list.querySelectorAll("li[data-i]").forEach((li, i) => li.setAttribute("aria-selected", i === active ? "true" : "false"));
+    if (active >= 0) { input.setAttribute("aria-activedescendant", list.id + "-" + active); const li = list.querySelector(`[data-i="${active}"]`); if (li && li.scrollIntoView) li.scrollIntoView({ block: "nearest" }); }
+  };
+  const show = () => {
+    const q = term();
+    items = normWords(q).length >= 2 ? suggest(q, 8) : [];
+    if (!items.length || (items.length === 1 && items[0].e.nl === normWords(q))) { close(); return; }
+    list.innerHTML = (items.every(x => x.fuzzy) ? '<li class="ah" role="presentation">Closest spellings</li>' : "")
+      + items.map((x, i) => `<li role="option" id="${list.id}-${i}" data-i="${i}" aria-selected="false"><span class="an">${esc(x.e.n)}</span><span class="ag">${x.e.kind === "brand" ? "brand of " + esc(x.e.g) : "generic"}</span></li>`).join("");
+    active = -1; list.hidden = false; input.setAttribute("aria-expanded", "true");
+  };
+  const choose = i => {
+    const x = items[i]; if (!x) return;
+    if (multi) { const parts = input.value.split(","); parts[parts.length - 1] = (parts.length > 1 ? " " : "") + x.e.n; input.value = parts.join(",") + ", "; }
+    else input.value = x.e.n;
+    close(); input.focus();
+  };
+  input.addEventListener("focus", ensureMeds);
+  input.addEventListener("input", () => { clearTimeout(timer); timer = setTimeout(() => ensureMeds().then(show), 60); });
+  input.addEventListener("keydown", e => {
+    if (list.hidden || !items.length) return;
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); active = (active + (e.key === "ArrowDown" ? 1 : items.length - 1)) % items.length; mark(); }
+    else if (e.key === "Enter" && active >= 0) { e.preventDefault(); choose(active); }
+    else if (e.key === "Escape") { e.preventDefault(); close(); }
+    else if (e.key === "Tab") close();
+  });
+  input.addEventListener("blur", () => setTimeout(close, 150));
+  list.addEventListener("mousedown", e => e.preventDefault());
+  list.addEventListener("click", e => { const li = e.target.closest && e.target.closest("li[data-i]"); if (li) choose(+li.dataset.i); });
+}
+attachSuggest($("#drug"), $("#drug-ac"), false);
+attachSuggest($("#extra"), $("#extra-ac"), true);
+$("#readout").addEventListener("click", e => {
+  const b = e.target.closest && e.target.closest(".dym");
+  if (!b) return;
+  $("#drug").value = b.dataset.dym;
+  check();
+});
+
+/* ---------- Medicare plans (data/index.json, data/<year>/plans.json, data/<year>/f/<id>.json) ---------- */
+const MED_LEGEND = "This drug list comes from Medicare's public plan data. Tier numbers are the plan's cost-sharing tiers. Most Medicare drug plans use five tiers: 1 preferred generic, 2 generic, 3 preferred brand, 4 non-preferred drug, 5 specialty; some plans add a sixth. PA = prior authorization required. ST = step therapy required. QL = quantity limit (amount per number of days).";
+const med = { index: null, years: {}, namesP: null };
+function fmtRelease(d) {
+  const m = String(d || "").match(/^(\d{4})(\d{2})(\d{2})$/);
+  return m ? new Date(+m[1], +m[2] - 1, +m[3]).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }) : String(d || "");
+}
+async function getData(path) {
+  const r = await fetch(DATA + path);
+  if (!r.ok) throw { code: r.status === 404 ? "missing" : "http" };
+  return r.json();
+}
+function medicareLines(form, names) {
+  const lines = [];
+  for (const row of form.d || []) {
+    const [rx, tier, flags, qa, qd] = row;
+    const segs = [names[rx] || "RxCUI " + rx];
+    if (tier) segs.push("Tier " + tier);
+    if (flags & 1) segs.push("PA");
+    if (flags & 2) segs.push("ST");
+    if (flags & 4) segs.push("QL" + (qa ? ` (${qa} per ${qd || "?"} days)` : ""));
+    lines.push(mkLine(0, segs));
+  }
+  return lines.sort((a, b) => a.all < b.all ? -1 : a.all > b.all ? 1 : 0);
+}
+async function openMedicare() {
+  const box = $("#medibox");
+  box.hidden = !box.hidden;
+  $("#medbtn").setAttribute("aria-expanded", String(!box.hidden));
+  if (box.hidden) return;
+  $("#pastebox").hidden = true;
+  if (!med.index) {
+    $("#mres").innerHTML = '<p class="hint">Loading Medicare plans…</p>';
+    try { med.index = await getData("index.json"); }
+    catch (e) {
+      $("#mres").innerHTML = `<p class="none">${e && e.code === "missing" ? "Medicare plan data hasn't been built yet. It shows up here after the site's data update finishes." : "Couldn't load Medicare plan data. Check your connection and try again."}</p>`;
+      return;
+    }
+    const years = (med.index.years || []).map(y => y.year);
+    if (!years.length) { $("#mres").innerHTML = '<p class="none">No Medicare plan data is available right now.</p>'; return; }
+    $("#myear").innerHTML = years.map(y => `<option value="${y}">${y} plan year</option>`).join("");
+    const cy = new Date().getFullYear();
+    $("#myear").value = String(years.includes(cy) ? cy : years[years.length - 1]);
+  }
+  await loadPlanYear(+$("#myear").value);
+  $("#mq").focus();
+}
+async function loadPlanYear(y) {
+  if (!med.years[y]) {
+    $("#mres").innerHTML = `<p class="hint">Loading ${y} plans…</p>`;
+    try {
+      const j = await getData(`${y}/plans.json`);
+      med.years[y] = j.plans.map(p => ({ c: p[0], p: p[1], s: p[2], n: p[3], o: p[4], f: p[5], st: p[6] ? p[6].split(",") : [], snp: p[7],
+        id: `${p[0]}-${p[1]}${p[2] && p[2] !== "000" ? "-" + p[2] : ""}`, hay: normWords(`${p[3]} ${p[4]} ${p[0]} ${p[0]}${p[1]}`) }));
+    } catch (e) { $("#mres").innerHTML = `<p class="none">Couldn't load the ${y} plans. Try again in a moment.</p>`; return; }
+  }
+  const keep = $("#mstate").value;
+  const states = [...new Set(med.years[y].flatMap(p => p.st))].sort();
+  $("#mstate").innerHTML = '<option value="">Any state</option>' + states.map(s => `<option value="${s}">${s}</option>`).join("");
+  if (states.includes(keep)) $("#mstate").value = keep;
+  searchPlans();
+}
+function searchPlans() {
+  const y = +$("#myear").value, all = med.years[y];
+  if (!all) return;
+  const q = $("#mq").value.trim(), st = $("#mstate").value;
+  let res = st ? all.filter(p => p.st.includes(st)) : all;
+  const idm = q.toUpperCase().replace(/\s+/g, "").match(/^([HSRE]\d{4})-?(\d{1,3})?(?:-?(\d{1,3}))?$/);
+  if (idm) res = res.filter(p => p.c === idm[1] && (!idm[2] || p.p === idm[2].padStart(3, "0")) && (!idm[3] || p.s === idm[3].padStart(3, "0")));
+  else if (q) { const toks = normWords(q).split(" ").filter(t => t.length >= 2); res = res.filter(p => toks.every(t => p.hay.includes(t))); }
+  else if (!st) { $("#mres").innerHTML = '<p class="hint">Type the plan ID from your member card (like S1234-001 or H1234-012) or part of the plan name. Picking a state narrows the list.</p>'; return; }
+  const shown = res.slice(0, 20);
+  $("#mres").innerHTML = (res.length
+      ? `<p class="hint">${res.length > shown.length ? `Showing ${shown.length} of ${res.length}. Type more of the name to narrow it down.` : `${res.length} plan${res.length === 1 ? "" : "s"}`}</p>`
+      : `<p class="none">No ${y} plans match. Check the ID, try fewer words, or change the state.</p>`)
+    + shown.map(p => `<button type="button" class="mplan" data-i="${all.indexOf(p)}"><span class="mp-n">${esc(p.n)}</span><span class="mp-m">${esc(p.id)} · ${esc(p.o)}${p.st.length ? " · " + esc(p.st.length > 4 ? p.st.length + " states" : p.st.join(", ")) : ""}${p.snp ? " · Special needs plan" : ""}</span></button>`).join("");
+}
+async function pickPlan(i) {
+  const y = +$("#myear").value, p = (med.years[y] || [])[i];
+  if (!p || state.busy) return;
+  state.busy = true; $("#go").disabled = true;
+  setStatus(`Loading the drug list for ${p.n}…`, { spin: true });
+  try {
+    med.namesP = med.namesP || getData("names.json");
+    const [form, names] = await Promise.all([getData(`${y}/f/${p.f}.json`), med.namesP]);
+    const lines = medicareLines(form, names);
+    const yi = (med.index.years || []).find(x => x.year === y) || {};
+    state.list = { name: p.n, pages: 0, lines, example: false, medicare: { year: y, id: p.id, release: yi.release || "" }, legend: MED_LEGEND };
+    $("#medibox").hidden = true; $("#medbtn").setAttribute("aria-expanded", "false");
+    state.busy = false;
+    afterListChange(`Loaded ${lines.length.toLocaleString()} drugs for ${p.n} (${p.id}). Press the button to check coverage.`);
+  } catch (e) {
+    med.namesP = null;
+    setStatus("Couldn't load that plan's drug list. Try again in a moment.");
+  } finally { state.busy = false; $("#go").disabled = false; }
+}
+$("#medbtn").addEventListener("click", openMedicare);
+$("#myear").addEventListener("change", () => loadPlanYear(+$("#myear").value));
+$("#mstate").addEventListener("change", searchPlans);
+let planT = null;
+$("#mq").addEventListener("input", () => { clearTimeout(planT); planT = setTimeout(searchPlans, 120); });
+$("#mres").addEventListener("click", e => { const b = e.target.closest && e.target.closest(".mplan"); if (b) pickPlan(+b.dataset.i); });
+if (window.__FF_TEST__) window.__ffTest = { state, check, suggest, medLookup, ensureMeds, openMedicare, loadPlanYear, searchPlans, pickPlan, render };
 
 renderList();
 check({ quiet: true });
