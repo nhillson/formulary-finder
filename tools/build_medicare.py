@@ -222,7 +222,8 @@ def build_year(zip_path, year, date, out_dir, workdir):
     region_states, ma_region_states = {}, {}
     if "geo" in tables:
         for r in read_rows(tables["geo"]):
-            st = STATE_ABBR.get(r.get("STATENAME", "").upper())
+            raw_st = r.get("STATENAME", "").strip().upper()
+            st = raw_st if raw_st in STATE_ABBR.values() else STATE_ABBR.get(raw_st)
             if not st:
                 continue
             if r.get("PDP_REGION_CODE"):
@@ -288,7 +289,28 @@ def build_year(zip_path, year, date, out_dir, workdir):
     rxcuis = {str(r[0]) for d in forms.values() for r in d.values()}
     for k in list(tables):
         os.remove(tables[k])
-    return {"year": year, "release": date, "plans": len(plan_rows), "formularies": len(forms), "drugs": len(rxcuis)}, rxcuis
+    by_state = {}
+    for row in plan_rows:
+        for st in filter(None, row[6].split(",")):
+            by_state[st] = by_state.get(st, 0) + 1
+    qa = {"pdp": sum(1 for r in plan_rows if r[0].startswith("S")), "ma": sum(1 for r in plan_rows if not r[0].startswith("S")),
+          "noStates": sum(1 for r in plan_rows if not r[6]), "pdpNoStates": sum(1 for r in plan_rows if r[0].startswith("S") and not r[6]),
+          "snp": sum(1 for r in plan_rows if r[7]), "plansByState": dict(sorted(by_state.items())),
+          "tiers": dict(sorted(((str(t), n) for t, n in _count(r[1] for d in forms.values() for r in d.values()).items()))),
+          "withPA": sum(1 for d in forms.values() for r in d.values() if r[2] & 1),
+          "withST": sum(1 for d in forms.values() for r in d.values() if r[2] & 2),
+          "withQL": sum(1 for d in forms.values() for r in d.values() if r[2] & 4),
+          "rows": sum(len(d) for d in forms.values()),
+          "samplePlans": [r[:7] for r in plan_rows if r[0].startswith("S")][:3]}
+    note(f"{year}: {qa['pdp']} PDP + {qa['ma']} MA plans; {qa['noStates']} without states; tiers {qa['tiers']}")
+    return {"year": year, "release": date, "plans": len(plan_rows), "formularies": len(forms), "drugs": len(rxcuis), "qa": qa}, rxcuis
+
+
+def _count(it):
+    out = {}
+    for x in it:
+        out[x] = out.get(x, 0) + 1
+    return out
 
 
 # ---------- Drug names ----------
@@ -369,9 +391,18 @@ def fetch_concepts(names_file=None):
     return {str(c.get("rxcui")): (c.get("name") or "", c.get("tty") or "") for c in (j.get("minConceptGroup") or {}).get("minConcept") or []}
 
 
-def build_drug_list(concepts):
+def fetch_ingredients(offline=False):
+    """Lowercased RxNorm ingredient (IN) and precise ingredient (PIN) names, or None offline."""
+    if offline:
+        return None
+    j = json.loads(http_get(f"{RXNAV}/allconcepts.json?tty=IN+PIN", timeout=600))
+    return {(c.get("name") or "").lower() for c in (j.get("minConceptGroup") or {}).get("minConcept") or []}
+
+
+def build_drug_list(concepts, ingredients=None):
     """Medication names for autocomplete: [[generic, [brands]], ...] from current clinical drugs."""
     generics = {}
+    dropped = 0
     for name, tty in concepts.values():
         if tty not in ("SCD", "SBD") or "allergenic" in name.lower():
             continue
@@ -381,9 +412,12 @@ def build_drug_list(concepts):
         bases = []
         for ing in ings:
             b = base_ingredient(ing)
+            if ingredients is not None and b not in ingredients and ing.lower() not in ingredients:
+                dropped += 1
+                continue
             if b and b not in bases:
                 bases.append(b)
-        if not bases:
+        if not bases or (ingredients is not None and len(bases) < len({base_ingredient(i) for i in ings}) and len(bases) == 0):
             continue
         g = " / ".join(bases)
         if len(g) > 70:
@@ -391,11 +425,16 @@ def build_drug_list(concepts):
         brands = generics.setdefault(g, set())
         if brand and tty == "SBD" and normalize_brand(brand).lower() != g.replace(" / ", "/"):
             brands.add(normalize_brand(brand))
+    if dropped:
+        log(f"  dropped {dropped} name parts that aren't RxNorm ingredients")
     return [[g, sorted(b)] for g, b in sorted(generics.items())]
 
 
 def normalize_brand(b):
-    return re.sub(r"\s+", " ", b).strip()
+    b = re.sub(r"\s+", " ", b).strip()
+    if b.isupper() and len(b) > 4 and " " not in b:
+        b = b.title()
+    return b
 
 
 def fetch_names(rxcuis, concepts, offline=False):
@@ -450,7 +489,7 @@ def main():
         shutil.rmtree(out)
     os.makedirs(out)
     concepts = fetch_concepts(a.names_file)  # fail early if RxNav is down
-    drugs = build_drug_list(concepts)
+    drugs = build_drug_list(concepts, fetch_ingredients(offline=bool(a.names_file)))
     with open(os.path.join(out, "drugs.json"), "w") as f:
         json.dump(drugs, f, separators=(",", ":"))
     note(f"Medication list: {len(drugs)} generics, {sum(len(b) for _, b in drugs)} brand names")
@@ -474,6 +513,9 @@ def main():
     with open(os.path.join(out, "index.json"), "w") as f:
         json.dump({"generated": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
                    "source": "CMS Monthly Prescription Drug Plan Formulary and Pharmacy Network Information; drug names from NLM RxNorm",
+                   "medications": {"generics": len(drugs), "brands": sum(len(b) for _, b in drugs),
+                                   "samples": [d for d in drugs if d[0] in ("atorvastatin", "semaglutide", "levothyroxine", "amphetamine / dextroamphetamine", "amoxicillin")]},
+                   "names": {"found": len(names), "needed": len(all_rx), "samples": [names[k] for k in sorted(names)[:: max(1, len(names) // 6)]][:6]},
                    "years": sorted(years, key=lambda y: y["year"])}, f, indent=1)
     size = sum(os.path.getsize(os.path.join(dp, fn)) for dp, _, fns in os.walk(out) for fn in fns)
     note(f"Done: {len(names)} of {len(all_rx)} drug names, {size / 1e6:.1f} MB total; " + "; ".join(f"{y['year']}: {y['plans']} plans, {y['formularies']} drug lists" for y in years))
