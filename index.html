@@ -91,6 +91,15 @@ input:focus-visible,textarea:focus-visible,button:focus-visible,summary:focus-vi
 .vh{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;overflow:hidden}
 .pastebox{display:grid;gap:8px}
 .claudeopt{display:grid;gap:6px;padding:12px;border-radius:10px;background:var(--rx-soft)}
+.keybox{border:1px solid var(--rule);border-radius:10px;background:var(--label)}
+.keybox > summary{cursor:pointer;list-style:none;padding:11px 36px 11px 12px;font-weight:600;font-size:14.5px;color:var(--rx);position:relative}
+.keybox > summary::-webkit-details-marker{display:none}
+.keybox > summary::after{content:"";position:absolute;right:16px;top:16px;width:7px;height:7px;border-right:1.5px solid var(--rx);border-bottom:1.5px solid var(--rx);transform:rotate(45deg)}
+.keybox[open] > summary::after{transform:rotate(-135deg);top:19px}
+.keyin{display:grid;gap:8px;padding:0 12px 12px}
+.keyin input{font-family:var(--mono);font-size:15px}
+.linkbtn{font:inherit;font-size:13px;padding:0;border:0;background:none;color:var(--rx);text-decoration:underline;text-underline-offset:2px;cursor:pointer}
+a{color:var(--rx)}
 .check{display:flex;gap:10px;align-items:flex-start;font-size:14.5px;font-weight:500;cursor:pointer}
 .check input{width:18px;height:18px;margin:2px 0 0;accent-color:var(--rx);flex:none}
 .go{font-family:var(--display);font-stretch:112%;font-weight:700;font-size:17px;letter-spacing:.01em;padding:13px 16px;border:0;border-radius:10px;background:var(--rx);color:var(--rx-ink);cursor:pointer}
@@ -242,9 +251,20 @@ footer p{margin:0;font-size:13px;color:var(--ink-3);max-width:78ch}
           <input id="extra" type="text" autocomplete="off" placeholder="Names your doctor mentioned, comma separated">
         </div>
         <div class="claudeopt" id="claudeopt" hidden>
-          <label class="check"><input type="checkbox" id="claudeOn" checked> <span>Use Claude to find substitutes and read the plan's codes</span></label>
-          <p class="hint">Covers any medication, not just the built-in list. Sends the medication name and the matching lines to Claude; the rest of your drug list stays here.</p>
+          <label class="check"><input type="checkbox" id="claudeOn" checked> <span id="claudelabel">Use Claude to find substitutes and read the plan's codes</span></label>
+          <p class="hint" id="claudehint">Covers any medication, not just the built-in list. Sends the medication name and the matching lines to Claude; the rest of your drug list stays here.</p>
+          <div class="row" id="keyrow" hidden><button type="button" class="linkbtn" id="forgetkey">Remove API key</button></div>
         </div>
+        <details class="keybox" id="keybox" hidden>
+          <summary>Look up any medication with Claude</summary>
+          <div class="keyin">
+            <p class="hint">The built-in list covers about 50 common drug classes. With your own Anthropic API key, Claude can suggest substitutes for any medication and decode your plan's tier codes. Each check uses a small amount of API credit.</p>
+            <label for="apikey" class="flabel">Anthropic API key</label>
+            <input id="apikey" type="password" autocomplete="off" spellcheck="false" placeholder="sk-ant-…">
+            <div class="row"><button type="button" class="btn-sm" id="savekey">Test and save</button><span class="hint" id="keymsg" aria-live="polite"></span></div>
+            <p class="hint">Create a key in the Claude Console (<a href="https://platform.claude.com/docs/en/get-api-key" target="_blank" rel="noopener">how to get one</a>). It's saved only in this browser and sent only to Anthropic. Setting a monthly spend limit on the key is a good idea.</p>
+          </div>
+        </details>
         <button class="go" id="go" type="submit">Find substitutes</button>
         <div class="status" id="status" aria-live="polite"></div>
       </div>
@@ -288,7 +308,7 @@ footer p{margin:0;font-size:13px;color:var(--ink-3);max-width:78ch}
   </div>
 
   <footer>
-    <p>Substitutes come from a built-in list of about 50 common drug classes. This isn't medical advice: a close substitute can still differ in dose, timing, side effects, or interactions, so make any switch with your prescriber. The coverage check reads text, so it can miss a drug listed under another name, and it can't see your copay.</p>
+    <p>Substitutes come from a built-in list of about 50 common drug classes, or from Claude if you add an API key. This isn't medical advice: a close substitute can still differ in dose, timing, side effects, or interactions, so make any switch with your prescriber. The coverage check reads text, so it can miss a drug listed under another name, and it can't see your copay.</p>
   </footer>
 </div>
 
@@ -849,7 +869,7 @@ function render() {
   const bets = picks(plan);
   let h = `<div class="rhead"><p class="kicker">${plan.example ? "Example · fictional plan" : plan.checked ? "Substitutes and coverage" : "Substitutes"}</p><h2>${esc(cur ? cur.p.name : plan.drug)}</h2><p class="meta">${plan.drugClass ? esc(plan.drugClass) + " · " : ""}${plan.source === "claude" ? "Substitutes from Claude" : "Substitutes from the built-in drug classes"}${plan.checked ? " · checked against " + esc(list.name) : ""}</p></div>`;
   if (plan.example) h += `<p class="example">This example uses a made-up drug list so you can see how it reads. Type your medication, and upload your plan's list to check real coverage.</p>`;
-  if (!plan.recognized) h += `<p class="notice">${esc(plan.drug)} isn't in the built-in drug classes${sample && !$("#claudeopt").hidden ? ", and Claude was off or didn't recognize it" : ""}. ${plan.checked ? "Only the name itself was searched. " : ""}Check the spelling, or add names under Also check.</p>`;
+  if (!plan.recognized) h += `<p class="notice">${esc(plan.drug)} isn't in the built-in drug classes${sample && !$("#claudeopt").hidden ? ", and Claude was off or didn't recognize it" : ""}. ${plan.checked ? "Only the name itself was searched. " : ""}Check the spelling, or add names under Also check.${!sample && !$("#keybox").hidden ? " To look up any medication, add an Anthropic API key in the form." : ""}</p>`;
   if (state.note) h += `<p class="notice">${esc(state.note)}</p>`;
 
   if (plan.recognized || plan.checked) {
@@ -892,9 +912,13 @@ function claudeErr(e, stage) {
     $("#claudeopt").hidden = true;
     return "Claude isn't available here, so this used the built-in drug classes and a plain text search.";
   }
-  if (code === "rate_limited") return "Claude is at a usage limit right now, so this used the built-in drug classes and a plain text search.";
-  if (code === "session_expired") return "Your Claude session expired. Sign in again to use Claude; this used the built-in drug classes for now.";
-  return stage === "alt" ? "Couldn't get substitutes from Claude this time, so the built-in drug classes were used." : "Claude couldn't read the list this time. Showing the text search results.";
+  const fallback = stage === "alt" ? " Used the built-in drug classes instead." : " Showing the text search results.";
+  if (code === "bad_key") return "Anthropic didn't accept your API key. Remove it and add a new one." + fallback;
+  if (code === "no_credit") return "Your Anthropic API account is out of credit. Add credit in the Claude Console and try again." + fallback;
+  if (code === "rate_limited") return "Claude is at a usage limit right now." + fallback;
+  if (code === "session_expired") return "Your Claude session expired. Sign in again to use Claude." + fallback;
+  if (code === "invalid_json") return "Claude's answer didn't come back in a usable form." + fallback;
+  return (e && e.message ? "Claude returned an error: " + String(e.message).slice(0, 160) + "." : "Couldn't reach Claude this time.") + fallback;
 }
 
 /* ---------- Claude prompts ---------- */
@@ -1117,10 +1141,87 @@ $("#readout").addEventListener("click", e => {
 renderList();
 check({ quiet: true });
 
+/* ---------- Claude with the viewer's own API key ---------- */
+const KEY_STORE = "formulary-finder.anthropic-key";
+const MODEL = "claude-sonnet-5-5";
+function getKey() { try { return localStorage.getItem(KEY_STORE) || ""; } catch (e) { return ""; } }
+function storeKey(k) { try { if (k) localStorage.setItem(KEY_STORE, k); else localStorage.removeItem(KEY_STORE); return true; } catch (e) { return false; } }
+function parseLooseJSON(t) {
+  try { return JSON.parse(t); } catch (e) {}
+  const f = t.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (f) { try { return JSON.parse(f[1]); } catch (e) {} }
+  const a = t.search(/[\[{]/), b = Math.max(t.lastIndexOf("}"), t.lastIndexOf("]"));
+  if (a >= 0 && b > a) { try { return JSON.parse(t.slice(a, b + 1)); } catch (e) {} }
+  throw { code: "invalid_json" };
+}
+async function callAnthropic(key, prompt, opts = {}) {
+  let res;
+  try {
+    res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      signal: opts.signal,
+      headers: { "content-type": "application/json", "x-api-key": key, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
+      body: JSON.stringify({ model: MODEL, max_tokens: opts.maxTokens || 8000, messages: [{ role: "user", content: prompt }] })
+    });
+  } catch (e) { throw { code: e && e.name === "AbortError" ? "cancelled" : "upstream_error" }; }
+  if (!res.ok) {
+    let msg = "";
+    try { const j = await res.json(); msg = (j && j.error && j.error.message) || ""; } catch (e) {}
+    const code = (res.status === 401 || res.status === 403) ? "bad_key"
+      : res.status === 429 ? "rate_limited"
+      : (res.status === 400 && /credit|billing|balance/i.test(msg)) ? "no_credit"
+      : "upstream_error";
+    throw { code, message: msg };
+  }
+  const data = await res.json();
+  const text = (data.content || []).filter(b => b.type === "text").map(b => b.text).join("");
+  if (!text.trim()) throw { code: "empty_completion" };
+  return text;
+}
+function keySampler(key) {
+  const f = async (p, o) => ({ text: await callAnthropic(key, p, o), truncated: false });
+  f.json = async (p, o) => parseLooseJSON(await callAnthropic(key, p, o));
+  return f;
+}
+function applyKey(k) {
+  if (k) {
+    sample = keySampler(k);
+    $("#claudelabel").textContent = "Use Claude (your API key) to find substitutes and read the plan's codes";
+    $("#claudehint").textContent = "Covers any medication. Sends the medication name and the matching lines to Anthropic with your key; the rest of your drug list stays in this browser.";
+    $("#claudeopt").hidden = false; $("#keyrow").hidden = false; $("#keybox").hidden = true;
+  } else {
+    sample = null;
+    $("#claudeopt").hidden = true; $("#keyrow").hidden = true; $("#keybox").hidden = false;
+  }
+}
+$("#savekey").addEventListener("click", async () => {
+  const k = $("#apikey").value.trim();
+  const msg = $("#keymsg");
+  if (!k) { msg.textContent = "Paste your key first."; return; }
+  const btn = $("#savekey"); btn.disabled = true; msg.textContent = "Testing the key…";
+  try {
+    await callAnthropic(k, "Reply with OK.", { maxTokens: 5 });
+    const kept = storeKey(k);
+    $("#apikey").value = "";
+    applyKey(k);
+    $("#claudeOn").checked = true;
+    setStatus(kept ? "Key saved in this browser. Claude will be used on your next check." : "Key works, but this browser won't let the page save it, so you'll need to add it again next visit.");
+  } catch (e) {
+    msg.textContent = e.code === "bad_key" ? "Anthropic didn't accept that key. Check that you copied all of it."
+      : e.code === "no_credit" ? "The key works, but the account has no API credit yet."
+      : e.code === "rate_limited" ? "The key hit a rate limit. Try again in a minute."
+      : e.message ? "Error from Anthropic: " + String(e.message).slice(0, 140)
+      : "Couldn't reach Anthropic. Check your connection and try again.";
+  } finally { btn.disabled = false; }
+});
+$("#forgetkey").addEventListener("click", () => { storeKey(""); applyKey(""); setStatus("API key removed from this browser."); });
+
 (async () => {
-  try { sample = window.claude && typeof window.claude.use === "function" ? await window.claude.use("sample") : null; }
-  catch (e) { sample = null; }
-  if (sample) $("#claudeopt").hidden = false;
+  let s = null;
+  try { s = window.claude && typeof window.claude.use === "function" ? await window.claude.use("sample") : null; }
+  catch (e) { s = null; }
+  if (s) { sample = s; $("#claudeopt").hidden = false; return; }
+  applyKey(getKey());
 })();
 })();
 </script>
