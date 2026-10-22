@@ -1,0 +1,910 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Part D Cost Estimator</title>
+<meta name="description" content="Compare Medicare drug plans by estimated yearly cost for your prescriptions: premium, deductible, copays and coinsurance, using Medicare's public plan data.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232445AE'/%3E%3Ctext x='32' y='46' font-family='Arial,sans-serif' font-size='40' font-weight='700' text-anchor='middle' fill='%23fff'%3E%E2%84%9E%3C/text%3E%3C/svg%3E">
+<style>
+:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0}
+img{max-width:100%}
+[hidden]{display:none!important}
+</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,500..800&family=IBM+Plex+Mono:wght@400;500&family=Public+Sans:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: same pharmacy-counter workbench as Formulary Finder. Your prescriptions and area on the left; plans ranked by estimated yearly cost on the right. One column on phones. */
+:root{
+  --paper:#F2F5F8;
+  --label:#FFFFFF;
+  --ink:#13233A;
+  --ink-2:#4A5A6F;
+  --ink-3:#6F7C90;
+  --rule:#D5DDE6;
+  --rule-2:#E6EBF0;
+  --rx:#2445AE;
+  --rx-strong:#1A3486;
+  --rx-ink:#FFFFFF;
+  --rx-soft:#E4EAF9;
+  --drug:#7A8BA6;
+  --ok:#1B7346; --ok-soft:#DFF1E6;
+  --warn:#9A5600; --warn-soft:#FAEAD3;
+  --bad:#A2302A; --bad-soft:#F7E1DF;
+  --none:#687384; --none-soft:#E9EDF1;
+  --shadow:0 10px 28px rgba(19,35,58,.16);
+  --display:"Archivo","Helvetica Neue",Arial,sans-serif;
+  --body:"Public Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#0E151E; --label:#151F2B; --ink:#E5EBF2; --ink-2:#A6B2C2; --ink-3:#8392A4; --rule:#2A3747; --rule-2:#202C3A;
+    --rx:#8EA6FF; --rx-strong:#B4C4FF; --rx-ink:#0E1730; --rx-soft:#1B2847; --drug:#5B6C86;
+    --ok:#5FCB92; --ok-soft:#14301F; --warn:#F0AC52; --warn-soft:#3A2810; --bad:#F08A80; --bad-soft:#3A1A17; --none:#98A4B4; --none-soft:#222D3A;
+    --shadow:0 10px 28px rgba(0,0,0,.5);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0E151E; --label:#151F2B; --ink:#E5EBF2; --ink-2:#A6B2C2; --ink-3:#8392A4; --rule:#2A3747; --rule-2:#202C3A;
+  --rx:#8EA6FF; --rx-strong:#B4C4FF; --rx-ink:#0E1730; --rx-soft:#1B2847; --drug:#5B6C86;
+  --ok:#5FCB92; --ok-soft:#14301F; --warn:#F0AC52; --warn-soft:#3A2810; --bad:#F08A80; --bad-soft:#3A1A17; --none:#98A4B4; --none-soft:#222D3A;
+  --shadow:0 10px 28px rgba(0,0,0,.5);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--paper);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.5;-webkit-text-size-adjust:100%}
+a{color:var(--rx)}
+.wrap{max-width:1140px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:28px 48px;display:grid;gap:28px}
+.top{display:grid;gap:10px}
+.crumb{margin:0;font-size:14px}
+.brand{display:flex;align-items:center;gap:12px}
+.rxmark{font-family:var(--display);font-weight:800;font-size:27px;line-height:1;width:44px;height:44px;flex:none;display:grid;place-items:center;border-radius:10px;background:var(--rx);color:var(--rx-ink)}
+h1{margin:0;font-family:var(--display);font-stretch:125%;font-weight:800;font-size:clamp(28px,6vw,44px);line-height:1.02;letter-spacing:-0.01em;text-wrap:balance}
+.lede{margin:0;color:var(--ink-2);font-size:16px;max-width:66ch}
+.bench{display:grid;gap:24px;grid-template-columns:minmax(0,1fr)}
+@media (min-width:940px){.bench{grid-template-columns:370px minmax(0,1fr);align-items:start}}
+
+/* Form card */
+.rxlabel{background:var(--label);border:1px solid var(--rule);border-radius:12px;min-width:0}
+.rxhead{border-radius:11px 11px 0 0;display:flex;justify-content:space-between;gap:12px;padding:9px 16px;background:var(--rx);color:var(--rx-ink);font-family:var(--mono);font-size:11.5px;letter-spacing:.09em;text-transform:uppercase}
+.fields{display:grid;gap:18px;padding:18px 16px}
+.field{display:grid;gap:6px;min-width:0;position:relative}
+.flabel{font-family:var(--mono);font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2)}
+.opt{text-transform:none;letter-spacing:0;color:var(--ink-3);font-family:var(--body);font-size:12px;margin-left:4px}
+.row2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px}
+input[type=text],input[type=search],input[type=number],select{width:100%;font:inherit;font-size:16px;color:var(--ink);background:var(--paper);border:1px solid var(--rule);border-radius:8px;padding:9px 11px;min-width:0}
+input::placeholder{color:var(--ink-3)}
+input:focus-visible,select:focus-visible,button:focus-visible,summary:focus-visible,.seg input:focus-visible + span{outline:2px solid var(--rx);outline-offset:2px}
+.hint{margin:0;font-size:12.5px;color:var(--ink-3);line-height:1.45}
+.vh{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;overflow:hidden}
+.btn-sm{font:inherit;font-size:14px;font-weight:600;padding:7px 12px;border-radius:8px;border:1px solid var(--rx);background:var(--rx);color:var(--rx-ink);cursor:pointer}
+.btn-sm.ghost{background:transparent;color:var(--rx)}
+.go{font-family:var(--display);font-stretch:112%;font-weight:700;font-size:17px;padding:13px 16px;border:0;border-radius:10px;background:var(--rx);color:var(--rx-ink);cursor:pointer}
+.go:hover{background:var(--rx-strong)}
+.go:disabled{opacity:.55;cursor:progress}
+.status{min-height:22px;display:flex;align-items:center;gap:10px;font-size:13.5px;color:var(--ink-2);flex-wrap:wrap}
+.spin{width:14px;height:14px;border-radius:50%;border:2px solid var(--rule);border-top-color:var(--rx);animation:sp .8s linear infinite;flex:none}
+@keyframes sp{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.spin{animation-duration:2.4s}}
+.seg{display:flex;flex-wrap:wrap;gap:6px}
+fieldset.alts{border:0;margin:0;padding:0;display:grid;gap:10px;min-width:0}
+fieldset.alts legend{padding:0;margin-bottom:6px}
+.alts .check{display:flex;gap:10px;align-items:flex-start;font-size:14.5px;font-weight:500;cursor:pointer}
+.alts .check input{width:18px;height:18px;margin:2px 0 0;flex:none;accent-color:var(--rx)}
+.alts .check small{display:block;font-size:12.5px;font-weight:400;color:var(--ink-3);line-height:1.4;margin-top:1px}
+.seg label{position:relative;cursor:pointer}
+.seg input{position:absolute;opacity:0;width:1px;height:1px}
+.seg span{display:block;padding:7px 11px;border:1px solid var(--rule);border-radius:999px;font-size:13.5px;font-weight:500;color:var(--ink-2);background:var(--paper)}
+.seg input:checked + span{background:var(--rx);border-color:var(--rx);color:var(--rx-ink)}
+
+/* Drug picker and list */
+.ac{position:absolute;left:0;right:0;top:100%;margin:4px 0 0;padding:4px;list-style:none;z-index:30;background:var(--label);border:1px solid var(--rule);border-radius:10px;box-shadow:var(--shadow);max-height:min(360px,55vh);overflow:auto}
+.ac li{padding:8px 10px;border-radius:7px;cursor:pointer;display:grid;gap:1px}
+.ac li[aria-selected="true"],.ac li[data-i]:hover{background:var(--rx-soft)}
+.ac .an{font-weight:600;overflow-wrap:anywhere;font-size:14.5px}
+.ac .ag{font-size:12px;color:var(--ink-3)}
+.ac li.ah{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);cursor:default}
+.mydrugs{display:grid;gap:8px;margin:0;padding:0;list-style:none}
+.md{border:1px solid var(--rule);border-radius:10px;padding:10px 10px 10px 12px;display:grid;gap:8px;background:var(--paper)}
+.md-top{display:flex;gap:8px;align-items:flex-start;justify-content:space-between}
+.md-n{font-weight:600;font-size:14.5px;overflow-wrap:anywhere;min-width:0}
+.md-x{font:inherit;font-size:20px;line-height:1;border:0;background:none;color:var(--ink-3);cursor:pointer;padding:0 4px}
+.md-q{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px;color:var(--ink-2)}
+.md-q input{width:92px;padding:6px 8px;font-size:15px;font-variant-numeric:tabular-nums}
+.empty{margin:0;font-size:13.5px;color:var(--ink-3)}
+
+/* Results */
+main{display:grid;gap:26px;min-width:0}
+#results{display:grid;gap:18px;min-width:0}
+.rhead{display:grid;gap:4px}
+.kicker{margin:0;font-family:var(--mono);font-size:11.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-3)}
+.rhead h2{margin:0;font-family:var(--display);font-stretch:118%;font-weight:800;font-size:clamp(23px,4.4vw,32px);line-height:1.12;text-wrap:balance}
+.meta{margin:0;color:var(--ink-2);font-size:14px}
+.notice{margin:0;padding:10px 14px;border-radius:10px;font-size:14px;background:var(--none-soft);color:var(--ink-2);max-width:80ch}
+.notice.warn{background:var(--warn-soft);color:var(--ink)}
+.toolbar{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center}
+.check{display:flex;gap:8px;align-items:center;font-size:14px;cursor:pointer}
+.check input{width:17px;height:17px;accent-color:var(--rx)}
+.legend{display:flex;gap:14px;font-size:12.5px;color:var(--ink-3)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:12px;height:8px;border-radius:2px;display:inline-block}
+.plans{display:grid;gap:12px;margin:0;padding:0;list-style:none;counter-reset:pl}
+.plan{background:var(--label);border:1px solid var(--rule);border-radius:12px;padding:14px;display:grid;gap:10px;min-width:0;counter-increment:pl}
+.plan.partial{border-style:dashed}
+.p-head{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 14px;align-items:start}
+.p-name{margin:0;font-family:var(--display);font-stretch:106%;font-weight:700;font-size:16.5px;line-height:1.25;overflow-wrap:anywhere}
+.p-name::before{content:counter(pl) ".";font-family:var(--mono);font-size:12px;font-weight:500;color:var(--ink-3);margin-right:8px;vertical-align:1px}
+.p-id{grid-column:1;font-size:12.5px;color:var(--ink-3);overflow-wrap:anywhere}
+.p-total{grid-column:2;grid-row:1 / span 2;text-align:right;font-variant-numeric:tabular-nums}
+.p-total b{display:block;font-family:var(--display);font-stretch:110%;font-weight:800;font-size:22px;line-height:1.1}
+.p-total small{display:block;font-size:12px;color:var(--ink-3)}
+.p-total small.save{color:var(--ok);font-weight:600;max-width:15em;margin-left:auto}
+.pd.sw .pd-n{font-weight:600}
+.pd .arrow{color:var(--rx)}
+.was{grid-column:1 / -1;font-size:12.5px;color:var(--ink-3);overflow-wrap:anywhere}
+.chip.k{background:var(--rx-soft);color:var(--rx)}
+details.checked{font-size:13.5px;color:var(--ink-2)}
+details.checked summary{cursor:pointer;color:var(--rx);font-weight:600}
+details.checked ul{margin:8px 0 0;padding-left:20px;display:grid;gap:4px}
+.bar{display:flex;height:8px;border-radius:4px;overflow:hidden;background:var(--rule-2)}
+.bar i{display:block;height:100%}
+.bar .bp{background:var(--rx)}
+.bar .bd{background:var(--drug)}
+.p-facts{display:flex;flex-wrap:wrap;gap:4px 16px;font-size:13.5px;color:var(--ink-2);font-variant-numeric:tabular-nums}
+.p-facts b{color:var(--ink);font-weight:600}
+.tag{font-family:var(--mono);font-size:10.5px;font-weight:500;letter-spacing:.07em;text-transform:uppercase;padding:2px 7px;border-radius:999px;background:var(--rx-soft);color:var(--rx);margin-left:6px;vertical-align:1px}
+.p-drugs{display:grid;gap:0;border-top:1px solid var(--rule-2)}
+.pd{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 12px;padding:8px 0;border-bottom:1px solid var(--rule-2);align-items:baseline}
+.pd:last-child{border-bottom:0}
+.pd-n{font-size:13.5px;font-weight:500;overflow-wrap:anywhere}
+.pd-c{font-size:13.5px;font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+.pd-s{grid-column:1 / -1;display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:12.5px;color:var(--ink-3)}
+[data-st]{--sc:var(--none);--sc-soft:var(--none-soft)}
+[data-st=covered]{--sc:var(--ok);--sc-soft:var(--ok-soft)}
+[data-st=conditions]{--sc:var(--warn);--sc-soft:var(--warn-soft)}
+[data-st=notcovered]{--sc:var(--bad);--sc-soft:var(--bad-soft)}
+.chip{font-family:var(--mono);font-size:11px;font-weight:500;padding:2px 7px;border-radius:999px;background:var(--sc-soft);color:var(--sc);white-space:nowrap}
+details.months summary{cursor:pointer;font-size:13px;color:var(--rx);font-weight:600}
+.mtable{overflow-x:auto;margin-top:8px}
+.mtable table{border-collapse:collapse;font-size:12.5px;font-variant-numeric:tabular-nums;min-width:640px;width:100%}
+.mtable th,.mtable td{padding:4px 6px;text-align:right;border-bottom:1px solid var(--rule-2);white-space:nowrap}
+.mtable th:first-child,.mtable td:first-child{text-align:left;white-space:normal;min-width:140px}
+.mtable thead th{font-family:var(--mono);font-weight:500;font-size:11px;color:var(--ink-3)}
+.mtable tfoot td{font-weight:600}
+.more{justify-self:start}
+.ready{background:var(--label);border:1px dashed var(--rule);border-radius:12px;padding:22px 18px;display:grid;gap:8px}
+.ready h2{margin:0;font-family:var(--display);font-stretch:112%;font-weight:700;font-size:19px}
+.ready p,.ready ol{margin:0;color:var(--ink-2);max-width:66ch}
+.ready ol{padding-left:20px;display:grid;gap:4px}
+.side{display:grid;gap:12px;border-top:1px solid var(--rule);padding-top:24px}
+.side h2{margin:0;font-family:var(--display);font-stretch:112%;font-weight:700;font-size:19px}
+.side ul{margin:0;padding-left:20px;display:grid;gap:6px;max-width:74ch;color:var(--ink-2)}
+footer p{margin:0;font-size:13px;color:var(--ink-3);max-width:80ch}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <p class="crumb"><a href="./">← Formulary Finder</a></p>
+    <div class="brand"><span class="rxmark" aria-hidden="true">℞</span><h1>Part D Cost Estimator</h1></div>
+    <p class="lede">Add the prescriptions you take, pick where you live, and see every Medicare drug plan there ranked by what it would likely cost you over the year: premium, deductible, copays and coinsurance.</p>
+  </header>
+
+  <div class="bench">
+    <form class="rxlabel" id="f" novalidate>
+      <div class="rxhead"><span>Plan comparison</span><span id="capnote"></span></div>
+      <div class="fields">
+        <div class="field">
+          <span class="flabel">Where you live</span>
+          <div class="row2">
+            <label class="vh" for="year">Plan year</label><select id="year"><option value="">Loading…</option></select>
+            <label class="vh" for="state">State</label><select id="state"><option value="">State</option></select>
+          </div>
+          <label class="vh" for="county">County</label>
+          <select id="county" disabled><option value="">County</option></select>
+          <p class="hint" id="wherehint">Medicare Advantage plans differ by county, so pick yours to see the right ones.</p>
+        </div>
+
+        <div class="field" id="pickfield">
+          <label class="flabel" for="pick">Your prescriptions</label>
+          <input id="pick" type="search" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Search by name, like atorvastatin 20" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="pick-ac">
+          <ul class="ac" id="pick-ac" role="listbox" aria-label="Matching drugs" hidden></ul>
+          <p class="hint">Pick the exact strength and form. Prices are per product.</p>
+        </div>
+        <ul class="mydrugs" id="mydrugs"></ul>
+
+        <div class="field">
+          <span class="flabel" id="pharmlabel">Where you fill</span>
+          <div class="seg" role="radiogroup" aria-labelledby="pharmlabel">
+            <label><input type="radio" name="pharm" value="0" checked><span>Preferred pharmacy</span></label>
+            <label><input type="radio" name="pharm" value="1"><span>Standard pharmacy</span></label>
+            <label><input type="radio" name="pharm" value="2"><span>Mail order</span></label>
+          </div>
+          <p class="hint">Many drug plans charge less at their preferred pharmacies. If you're not sure, compare both.</p>
+        </div>
+
+        <fieldset class="alts" id="alts">
+          <legend class="flabel">Cheaper alternatives</legend>
+          <label class="check"><input type="checkbox" id="alt-same" checked><span>Other versions of the same drug<small>Generic or brand with the same strength and form. Usually a simple swap at the pharmacy.</small></span></label>
+          <label class="check"><input type="checkbox" id="alt-class" checked><span>Similar drugs<small>Same ingredient in another version, or another drug in the same class. Needs your prescriber's OK.</small></span></label>
+          <label class="check"><input type="checkbox" id="alt-past"><span>Include ones that need prior authorization or step therapy</span></label>
+          <p class="hint" id="althint">For each plan, the estimate uses the cheapest option for each of your drugs.</p>
+        </fieldset>
+
+        <button class="go" id="go" type="submit">Compare plans</button>
+        <div class="status" id="status" aria-live="polite"></div>
+      </div>
+    </form>
+
+    <main>
+      <div id="results">
+        <div class="ready">
+          <h2>Compare plans by what you'd actually pay</h2>
+          <ol>
+            <li>Pick the plan year, your state and county.</li>
+            <li>Add each prescription with how much you get every 30 days.</li>
+            <li>Press Compare plans. Every plan in your area is ranked by estimated yearly cost.</li>
+          </ol>
+          <p>Your entries are saved in this browser so you can come back to them.</p>
+        </div>
+      </div>
+
+      <section class="side">
+        <h2>How the estimate works</h2>
+        <ul>
+          <li>It assumes you fill each prescription every month from January through December, in the quantity you enter.</li>
+          <li>Drug prices are the plan's average negotiated price at retail pharmacies in its service area, from Medicare's quarterly pricing files. Dispensing fees aren't included, and your pharmacy's price can differ.</li>
+          <li>Until the deductible is met you pay the full price for drugs on tiers where it applies; after that you pay the plan's copay or coinsurance for the tier. Once your out-of-pocket spending reaches the yearly cap, covered drugs cost $0 for the rest of the year.</li>
+          <li>Covered insulin is capped at $35 a month and isn't subject to the deductible.</li>
+          <li>Drugs a plan doesn't cover are counted at full price and don't count toward the cap. Ask about a formulary exception before ruling a plan out.</li>
+          <li>Medicare Advantage premiums are the plan premium from Medicare's data. Most people also pay the Part B premium, whichever plan they choose.</li>
+          <li>Check your top choices in Medicare's Plan Finder at medicare.gov or by calling 1-800-MEDICARE before you enroll. It uses your exact pharmacy.</li>
+        </ul>
+      </section>
+    </main>
+  </div>
+
+  <footer>
+    <p>Plan, cost sharing and price data come from Medicare's public Part D files (CMS); drug names from the National Library of Medicine's RxNorm. Updated twice a week. This is an estimate to help you shortlist plans, not a quote.</p>
+  </footer>
+</div>
+
+<script src="classes.js"></script>
+<script>
+(() => {
+"use strict";
+const $ = (s, r = document) => r.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const DATA = "data/";
+const CAP = { 2025: 2000, 2026: 2100, 2027: 2400 };
+const capFor = y => CAP[y] ?? CAP[Math.max(...Object.keys(CAP).map(Number))];
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const STORE = "formulary-finder.cost";
+const money0 = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+const money2 = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const fmt = v => v == null ? "—" : v === 0 ? "$0" : Math.abs(v) >= 100 ? money0.format(v) : money2.format(v);
+const fmtY = v => v == null ? "—" : money0.format(v);
+
+const S = { index: null, names: null, years: {}, states: {}, rx: {}, drugs: [], results: null, shown: 25 };
+
+async function getData(path) {
+  const r = await fetch(DATA + path);
+  if (!r.ok) throw { code: r.status === 404 ? "missing" : "http", path };
+  return r.json();
+}
+function setStatus(msg, spin) { $("#status").innerHTML = msg ? `${spin ? '<span class="spin" aria-hidden="true"></span>' : ""}<span>${esc(msg)}</span>` : ""; }
+function save() {
+  try {
+    localStorage.setItem(STORE, JSON.stringify({ year: $("#year").value, state: $("#state").value, county: $("#county").value,
+      pharm: pharm(), drugs: S.drugs.map(d => ({ rx: d.rx, qty: d.qty })),
+      alts: { same: $("#alt-same").checked, cls: $("#alt-class").checked, past: $("#alt-past").checked } }));
+  } catch (e) {}
+}
+function load() { try { return JSON.parse(localStorage.getItem(STORE) || "null"); } catch (e) { return null; } }
+const pharm = () => +(document.querySelector('input[name="pharm"]:checked') || { value: 0 }).value;
+
+/* ---------- Names and the drug picker ---------- */
+const normWords = s => String(s || "").toLowerCase().replace(/[\/\-]/g, " ").replace(/[^a-z0-9. ]/g, " ").replace(/\s+/g, " ").trim();
+function phon(s) {
+  return String(s || "").toLowerCase().replace(/[^a-z]/g, "").replace(/ph/g, "f").replace(/th/g, "t").replace(/ck/g, "k")
+    .replace(/c(?=[eiy])/g, "s").replace(/c/g, "k").replace(/qu/g, "kw").replace(/x/g, "ks").replace(/y/g, "i").replace(/z/g, "s").replace(/(.)\1+/g, "$1");
+}
+function prefixDist(a, b, max) {
+  const n = a.length, m = Math.min(b.length, n + max);
+  let pp = null, prev = new Array(m + 1);
+  for (let j = 0; j <= m; j++) prev[j] = j;
+  for (let i = 1; i <= n; i++) {
+    const cur = new Array(m + 1); cur[0] = i; let rowMin = i;
+    for (let j = 1; j <= m; j++) {
+      let v = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+      if (pp && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) v = Math.min(v, pp[j - 2] + 1);
+      cur[j] = v; if (v < rowMin) rowMin = v;
+    }
+    if (rowMin > max) return max + 1;
+    pp = prev; prev = cur;
+  }
+  let best = Infinity; for (let j = 0; j <= m; j++) best = Math.min(best, prev[j]);
+  return best;
+}
+let catalog = null; // [{rx, label, nl, words, brand, ph:[...]}]
+async function ensureCatalog() {
+  const y = +$("#year").value;
+  if (catalog && catalog.year === y) return catalog;
+  if (!S.names) S.names = await getData("names.json");
+  if (!S.years[y]) S.years[y] = {};
+  if (!S.years[y].rx) S.years[y].rx = await getData(`${y}/rx.json`);
+  const list = S.years[y].rx.map(rx => {
+    const label = S.names[rx] || "RxCUI " + rx;
+    const nl = normWords(label), bm = label.match(/\[([^\]]+)\]\s*$/);
+    const words = nl.split(" ");
+    const parts = splitLabel(label);
+    return { rx: String(rx), label, nl, words, brand: bm ? bm[1] : "", ph: [...new Set(words.filter(w => /^[a-z]{4,}$/.test(w)).map(phon))],
+      base: parts.base, ingKey: parts.ingKey, strength: parts.strength, form: formGroup(label) };
+  });
+  const byRx = new Map(list.map(e => [e.rx, e])), byBase = new Map(), byIng = new Map();
+  for (const e of list) {
+    if (!byBase.has(e.base)) byBase.set(e.base, []); byBase.get(e.base).push(e);
+    if (!byIng.has(e.ingKey)) byIng.set(e.ingKey, []); byIng.get(e.ingKey).push(e);
+  }
+  catalog = { year: y, list, byRx, byBase, byIng };
+  return catalog;
+}
+function searchCatalog(q) {
+  const nq = normWords(q);
+  const toks = nq.split(" ").filter(Boolean);
+  if (!toks.length || nq.length < 2) return { items: [], fuzzy: false };
+  let items = [];
+  for (const e of catalog.list) {
+    let ok = true, score = 0;
+    for (const t of toks) {
+      if (e.words.some(w => w === t)) score += 30;
+      else if (e.words.some(w => w.startsWith(t))) score += 20;
+      else if (t.length >= 3 && e.nl.includes(t)) score += 8;
+      else { ok = false; break; }
+    }
+    if (!ok) continue;
+    if (e.words[0].startsWith(toks[0])) score += 25;
+    if (e.brand && normWords(e.brand).startsWith(toks[0])) score += 25;
+    items.push({ e, score: score - e.label.length * 0.05 });
+  }
+  let fuzzy = false;
+  if (!items.length && toks[0].length >= 4) {
+    const pq = phon(toks[0]), max = pq.length <= 7 ? 1 : pq.length <= 10 ? 2 : 3;
+    for (const e of catalog.list) {
+      let d = max + 1;
+      for (const w of e.ph) { d = Math.min(d, prefixDist(pq, w, max)); if (d === 0) break; }
+      if (d <= max) items.push({ e, score: 100 - d * 20 - e.label.length * 0.05 });
+    }
+    fuzzy = items.length > 0;
+  }
+  items.sort((a, b) => b.score - a.score || a.e.label.localeCompare(b.e.label));
+  return { items: items.slice(0, 14), fuzzy };
+}
+function unitWord(label) {
+  if (/tablet|pill|lozenge|troche/i.test(label)) return "tablets";
+  if (/capsule/i.test(label)) return "capsules";
+  if (/inhal|actuat/i.test(label)) return "units (grams or doses)";
+  if (/injection|injector|syringe|solution|suspension|oral liquid|syrup|drops/i.test(label)) return "mL";
+  if (/cream|ointment|gel|lotion|topical|foam/i.test(label)) return "grams";
+  if (/patch|film|strip/i.test(label)) return "patches";
+  return "units";
+}
+async function addDrug(rx, qty) {
+  rx = String(rx);
+  if (S.drugs.some(d => d.rx === rx)) { setStatus("That drug is already on your list."); return; }
+  const y = +$("#year").value;
+  const label = (S.names && S.names[rx]) || "RxCUI " + rx;
+  const d = { rx, label, qty: qty ?? null, insulin: /\binsulin\b/i.test(label) };
+  S.drugs.push(d);
+  renderDrugs();
+  try {
+    const info = await getRx(y, rx);
+    if (d.qty == null) d.qty = info.q || (/tablet|capsule|pill/i.test(label) ? 30 : 1);
+  } catch (e) { if (d.qty == null) d.qty = 30; }
+  renderDrugs(); save();
+}
+async function getRx(y, rx) {
+  const k = y + ":" + rx;
+  if (!S.rx[k]) S.rx[k] = getData(`${y}/rx/${rx}.json`).catch(e => { delete S.rx[k]; throw e; });
+  return S.rx[k];
+}
+function renderDrugs() {
+  const ul = $("#mydrugs");
+  if (!S.drugs.length) { ul.innerHTML = `<li class="empty">No prescriptions added yet.</li>`; return; }
+  ul.innerHTML = S.drugs.map((d, i) => `<li class="md"><div class="md-top"><span class="md-n">${esc(d.label)}</span><button type="button" class="md-x" data-rm="${i}" aria-label="Remove ${esc(d.label)}">×</button></div>
+    <label class="md-q"><span>Per 30 days</span><input type="number" inputmode="decimal" min="0" step="any" id="qty-${esc(d.rx)}" data-q="${i}" value="${d.qty ?? ""}"><span>${esc(unitWord(d.label))}</span></label></li>`).join("");
+}
+function attachPicker() {
+  const input = $("#pick"), list = $("#pick-ac");
+  let items = [], active = -1, timer = null;
+  const close = () => { list.hidden = true; active = -1; input.setAttribute("aria-expanded", "false"); input.removeAttribute("aria-activedescendant"); };
+  const mark = () => {
+    list.querySelectorAll("li[data-i]").forEach((li, i) => li.setAttribute("aria-selected", i === active ? "true" : "false"));
+    if (active >= 0) { input.setAttribute("aria-activedescendant", "pick-" + active); const li = list.querySelector(`[data-i="${active}"]`); if (li && li.scrollIntoView) li.scrollIntoView({ block: "nearest" }); }
+  };
+  const show = async () => {
+    if (!$("#year").value) return;
+    try { await ensureCatalog(); } catch (e) { setStatus("Couldn't load the drug list. Check your connection."); return; }
+    const r = searchCatalog(input.value);
+    items = r.items;
+    if (!items.length) {
+      list.innerHTML = input.value.trim().length >= 3 ? `<li class="ah" role="presentation">No ${esc($("#year").value)} Medicare drug matches “${esc(input.value.trim())}”</li>` : "";
+      list.hidden = !list.innerHTML; input.setAttribute("aria-expanded", String(!list.hidden)); return;
+    }
+    list.innerHTML = (r.fuzzy ? '<li class="ah" role="presentation">Closest spellings</li>' : "")
+      + items.map((x, i) => `<li role="option" id="pick-${i}" data-i="${i}" aria-selected="false"><span class="an">${esc(x.e.label)}</span>${x.e.brand ? `<span class="ag">brand</span>` : `<span class="ag">generic</span>`}</li>`).join("");
+    active = -1; list.hidden = false; input.setAttribute("aria-expanded", "true");
+  };
+  const choose = i => { const x = items[i]; if (!x) return; input.value = ""; close(); addDrug(x.e.rx); input.focus(); };
+  input.addEventListener("focus", () => { ensureCatalog().catch(() => {}); });
+  input.addEventListener("input", () => { clearTimeout(timer); timer = setTimeout(show, 90); });
+  input.addEventListener("keydown", e => {
+    if (e.key === "Enter") { e.preventDefault(); if (!list.hidden && items.length) choose(active >= 0 ? active : 0); return; }
+    if (list.hidden || !items.length) return;
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); active = (active + (e.key === "ArrowDown" ? 1 : items.length - 1)) % items.length; mark(); }
+    else if (e.key === "Escape") { e.preventDefault(); close(); }
+  });
+  input.addEventListener("blur", () => setTimeout(close, 150));
+  list.addEventListener("mousedown", e => e.preventDefault());
+  list.addEventListener("click", e => { const li = e.target.closest("li[data-i]"); if (li) choose(+li.dataset.i); });
+}
+
+/* ---------- Year, state, county ---------- */
+async function loadIndex() {
+  try { S.index = await getData("index.json"); }
+  catch (e) {
+    $("#year").innerHTML = '<option value="">Unavailable</option>';
+    setStatus(e && e.code === "missing" ? "Medicare plan data hasn't been built yet. Check back after the site's next data update." : "Couldn't load Medicare plan data. Check your connection and reload.");
+    return false;
+  }
+  const years = (S.index.years || []).map(y => y.year);
+  $("#year").innerHTML = years.map(y => `<option value="${y}">${y} plan year</option>`).join("");
+  return true;
+}
+function fillStates(keep) {
+  const y = +$("#year").value;
+  const yi = (S.index.years || []).find(x => x.year === y) || {};
+  const states = Object.keys((yi.qa && yi.qa.plansByState) || {}).sort();
+  $("#state").innerHTML = '<option value="">State</option>' + states.map(s => `<option value="${s}">${s}</option>`).join("");
+  if (keep && states.includes(keep)) $("#state").value = keep;
+  const cap = capFor(y);
+  $("#capnote").textContent = `${y} cap ${money0.format(cap)}`;
+}
+async function getState(y, st) {
+  const k = y + ":" + st;
+  if (!S.states[k]) S.states[k] = getData(`${y}/cost/${st}.json`).catch(e => { delete S.states[k]; throw e; });
+  return S.states[k];
+}
+async function fillCounties(keep) {
+  const y = +$("#year").value, st = $("#state").value, sel = $("#county");
+  if (!st) { sel.innerHTML = '<option value="">County</option>'; sel.disabled = true; return; }
+  sel.disabled = true; sel.innerHTML = '<option value="">Loading counties…</option>';
+  try {
+    const data = await getState(y, st);
+    sel.innerHTML = '<option value="">All counties</option>' + (data.counties || []).map(([c, n]) => `<option value="${esc(c)}">${esc(n)}</option>`).join("");
+    if (keep && (data.counties || []).some(([c]) => c === keep)) sel.value = keep;
+    sel.disabled = false;
+  } catch (e) { sel.innerHTML = '<option value="">Couldn\'t load counties</option>'; }
+}
+
+/* ---------- The estimate ---------- */
+function shareAt(row, ph) {
+  if (!row) return null;
+  return row[3 + ph] || row[4] || row[3] || null; // fall back to standard, then preferred
+}
+function costShare(share, price) {
+  if (!share) return null;
+  const [type, amt, min, max] = share;
+  if (type === 1) return price == null ? (amt || 0) : Math.min(amt || 0, price);
+  if (type === 2) {
+    if (price == null) return null;
+    let v = (amt || 0) * price;
+    if (min != null) v = Math.max(v, Math.min(min, price));
+    if (max != null) v = Math.min(v, max);
+    return Math.min(v, price);
+  }
+  return null;
+}
+function estimate(plan, drugs, ph, cap) {
+  const [id, name, org, prem, ded0, fid, pt, snp, cty, type, cs] = plan;
+  const tiers = new Map(cs.map(r => [r[0], r]));
+  let ded = ded0 || 0, oop = 0, drugTotal = 0, unknown = false, typicalPrice = false;
+  const per = drugs.map(d => {
+    const info = d.data && d.data.f ? d.data.f[fid] : null;
+    let unit = null, typical = false;
+    if (d.data) {
+      if (pt && d.data.p && d.data.p[pt] != null) unit = d.data.p[pt];
+      else if (d.data.a != null) { unit = d.data.a; typical = true; }
+    }
+    if (typical) typicalPrice = true;
+    const qty = +d.qty || 0;
+    return { d, info, unit, typical, price: unit != null ? unit * qty : null, row: info ? tiers.get(info[0]) : null, months: [], total: 0,
+      st: !info ? "notcovered" : (info[1] & 3) ? "conditions" : "covered" };
+  });
+  for (let m = 0; m < 12; m++) {
+    for (const x of per) {
+      let pay = null;
+      if (!x.info) {
+        pay = x.price; // not covered: full price, doesn't count toward the cap
+        if (pay == null) unknown = true; else { drugTotal += pay; x.total += pay; }
+        x.months.push(pay);
+        continue;
+      }
+      if (oop >= cap) { x.months.push(0); continue; }
+      if (x.row) {
+        let rem = x.price, out = 0, ok = true;
+        if (x.row[1] && ded > 0 && !x.d.insulin) {
+          if (rem == null) ok = false;
+          else { const dp = Math.min(rem, ded); out += dp; ded -= dp; rem -= dp; }
+        }
+        if (ok) {
+          const share = shareAt(x.row, ph);
+          if (rem == null || rem > 0) {
+            const c = costShare(share, rem);
+            if (c == null) ok = false; else out += c;
+          }
+        }
+        if (ok) pay = x.d.insulin ? Math.min(out, 35) : out;
+      }
+      if (pay == null) { unknown = true; x.months.push(null); continue; }
+      if (oop + pay > cap) pay = Math.max(0, cap - oop);
+      oop += pay; drugTotal += pay; x.total += pay; x.months.push(pay);
+    }
+  }
+  const premium = (prem || 0) * 12;
+  return { plan, id, name, org, prem, ded: ded0, type, snp, per, premium, drugTotal, total: premium + drugTotal, unknown,
+    typicalPrice, coversAll: per.every(x => x.info), noCostData: !cs.length, hitCap: oop >= cap };
+}
+
+/* ---------- Alternatives ---------- */
+const SALTS = new Set(("hydrochloride hcl sodium potassium calcium magnesium sulfate maleate besylate succinate tartrate mesylate acetate bromide " +
+  "xinafoate propionate furoate fumarate dihydrate monohydrate trihydrate hemihydrate citrate phosphate hydrobromide aspartate saccharate " +
+  "dipropionate bitartrate dimesylate chloride carbonate gluconate lactate oxalate valerate benzoate hyclate anhydrous hydrate pamoate tosylate napsylate").split(" "));
+function baseIng(text) {
+  let w = String(text).toLowerCase().replace(/,/g, " ").split(/\s+/).filter(Boolean).map(x => x.replace(/-[a-z]{4}$/, ""));
+  const kept = w.filter(x => !SALTS.has(x));
+  return (kept.length ? kept : w).join(" ");
+}
+const ingKeyOf = names => names.map(baseIng).filter(Boolean).sort().join("+");
+function splitLabel(label) {
+  const base = label.replace(/\s*\[[^\]]+\]\s*$/, "");
+  const s = base.replace(/^\d[\d.,]*\s+[A-Z][A-Z/]*\s+(?=[a-z])/, "");
+  const m = s.match(/\s(?=\d)/);
+  const ingText = m ? s.slice(0, m.index) : s.split(/\s(?=[A-Z])/)[0];
+  const rest = m ? s.slice(m.index + 1) : "";
+  const sm = rest.match(/^\d[\d.,]*\s*[A-Z%][A-Z%/]*(?:\s*\/\s*\d[\d.,]*\s*[A-Z%][A-Z%/]*)*/);
+  return { base, ingText, ingKey: ingKeyOf(ingText.split(" / ")), strength: sm ? sm[0].replace(/\s+/g, " ") : "" };
+}
+function formGroup(label) {
+  const l = label.toLowerCase();
+  if (/nasal/.test(l)) return "nasal";
+  if (/inhalation solution|inhalation suspension|nebuliz/.test(l)) return "neb";
+  if (/inhal|actuat/.test(l)) return "inhaler";
+  if (/ophthalmic/.test(l)) return "eye";
+  if (/otic/.test(l)) return "ear";
+  if (/patch|transdermal system/.test(l)) return "patch";
+  if (/pen injector|auto-injector|prefilled syringe|injection|injectable|cartridge|syringe/.test(l)) return "injection";
+  if (/rectal|suppositor/.test(l)) return "rectal";
+  if (/vaginal/.test(l)) return "vaginal";
+  if (/cream|ointment|\bgel\b|lotion|foam|topical|shampoo/.test(l)) return "topical";
+  if (/oral solution|oral suspension|syrup|elixir|oral liquid|oral drops/.test(l)) return "oral-liquid";
+  if (/tablet|capsule|pill|lozenge|troche|chewable|disintegrating|film|granule/.test(l)) return "oral-solid";
+  return "other";
+}
+const FORM_NAMES = { nasal: "nasal spray", neb: "nebulizer solution", inhaler: "inhaler", eye: "eye drops", ear: "ear drops", patch: "patch",
+  injection: "injection", rectal: "rectal", vaginal: "vaginal", topical: "topical", "oral-liquid": "oral liquid", "oral-solid": "pill", other: "" };
+const CLASSES = ((window.FF_DATA && window.FF_DATA.RAW) || []).map(r => ({ name: r[0], members: r[4].split(";").map(m => {
+  const k = m.indexOf(":"); const left = k < 0 ? m : m.slice(0, k);
+  const [ds] = left.split("!"); const [g, q] = ds.split("=");
+  return { g: g.trim(), key: ingKeyOf((q || g).split("/")) };
+}) }));
+const CLASS_BY_KEY = new Map();
+CLASSES.forEach(c => c.members.forEach(m => { if (!CLASS_BY_KEY.has(m.key)) CLASS_BY_KEY.set(m.key, []); CLASS_BY_KEY.get(m.key).push(c); }));
+
+const KEY_STORE = "formulary-finder.anthropic-key", MODEL = "claude-sonnet-5-5";
+function apiKey() { try { return localStorage.getItem(KEY_STORE) || ""; } catch (e) { return ""; } }
+async function claudeAlternatives(ingText, form) {
+  const key = apiKey();
+  if (!key) return null;
+  const ck = "formulary-finder.alts:" + ingText + ":" + form;
+  try { const c = localStorage.getItem(ck); if (c) return JSON.parse(c); } catch (e) {}
+  const prompt = `A patient takes ${ingText}${FORM_NAMES[form] ? " (" + FORM_NAMES[form] + ")" : ""}. List the medications a prescriber would most commonly consider as substitutes: drugs in the same class used for the same purpose, preferably available in the same form. Use US generic names, lowercase, without salts, joining combination ingredients with "/". Reply with ONLY JSON: {"alternatives": ["name", ...]} with at most 10 names, or {"alternatives": []} if there are none.`;
+  try {
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-api-key": key, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
+      body: JSON.stringify({ model: MODEL, max_tokens: 800, messages: [{ role: "user", content: prompt }] })
+    });
+    if (!res.ok) return null;
+    const j = await res.json();
+    const text = (j.content || []).filter(b => b.type === "text").map(b => b.text).join("");
+    const m = text.match(/\{[\s\S]*\}/);
+    const arr = m ? (JSON.parse(m[0]).alternatives || []).filter(x => typeof x === "string").map(x => x.slice(0, 80)).slice(0, 10) : [];
+    try { localStorage.setItem(ck, JSON.stringify(arr)); } catch (e) {}
+    return arr;
+  } catch (e) { return null; }
+}
+const strengthNum = e => { const m = e.strength.match(/[\d.]+/); return m ? parseFloat(m[0]) : 0; };
+function pickStrengths(prods, n) {
+  // A few representative strengths: the middle of the range and its neighbours
+  const sorted = prods.slice().sort((a, b) => strengthNum(a) - strengthNum(b) || a.label.localeCompare(b.label));
+  if (sorted.length <= n) return sorted;
+  const mid = Math.floor((sorted.length - 1) / 2), from = Math.max(0, Math.min(sorted.length - n, mid - Math.floor((n - 1) / 2)));
+  return sorted.slice(from, from + n);
+}
+async function findAlternatives(d, opts, notes) {
+  const e0 = catalog.byRx.get(d.rx);
+  if (!e0) return { same: [], ingr: [], cls: [], src: "" };
+  const same = opts.same ? (catalog.byBase.get(e0.base) || []).filter(e => e.rx !== e0.rx) : [];
+  let ingr = [], cls = [], src = "";
+  if (opts.cls) {
+    ingr = (catalog.byIng.get(e0.ingKey) || []).filter(e => e.base !== e0.base && e.form === e0.form && e.strength === e0.strength);
+    const groups = new Map();
+    const addGroup = (key, label, clsName) => {
+      if (key === e0.ingKey || groups.has(key)) return;
+      let prods = (catalog.byIng.get(key) || []).filter(e => e.form === e0.form);
+      if (!prods.length) return;
+      const gens = prods.filter(e => !e.brand);
+      prods = pickStrengths(gens.length ? gens : prods, 3);
+      groups.set(key, { key, ing: label, cls: clsName, prods });
+    };
+    const classes = CLASS_BY_KEY.get(e0.ingKey) || [];
+    if (classes.length) {
+      src = "built-in";
+      classes.forEach(c => c.members.forEach(m => addGroup(m.key, m.g, c.name)));
+    } else if (apiKey()) {
+      const names = await claudeAlternatives(splitLabel(d.label).ingText, e0.form);
+      if (names) { src = "claude"; names.forEach(n => addGroup(ingKeyOf(n.split("/")), n, "suggested by Claude")); }
+      else notes.push(`Claude couldn't suggest similar drugs for ${splitLabel(d.label).ingText}.`);
+    } else src = "none";
+    cls = [...groups.values()];
+  }
+  return { same, ingr, cls, src, e0 };
+}
+async function loadRxAll(y, rxs, onProgress) {
+  const list = [...new Set(rxs)];
+  let done = 0, i = 0;
+  const worker = async () => {
+    while (i < list.length) {
+      const rx = list[i++];
+      try { await getRx(y, rx); } catch (e) {}
+      onProgress(++done, list.length);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(6, list.length) }, worker));
+}
+const altQty = (d, e, data, kind) => kind === "class" && e.form !== "oral-solid" && data && data.q ? data.q : d.qty;
+function mkDrug(d, e, data, kind) {
+  return { rx: e.rx, label: e.label, qty: altQty(d, e, data, kind), insulin: /\binsulin\b/i.test(e.label), data };
+}
+
+function optimize(plan, drugs, cands, ph, cap, opts) {
+  const asis = estimate(plan, drugs, ph, cap);
+  if (!cands.some(c => c.length)) return { ...asis, asis, choices: drugs.map(d => ({ kind: "asis", drug: d })), switched: 0 };
+  const fid = plan[5];
+  const single = drug => { const r = estimate(plan, [drug], ph, cap); return r.unknown ? null : r.drugTotal; };
+  const blocked = drug => !opts.past && drug.data && drug.data.f && drug.data.f[fid] && (drug.data.f[fid][1] & 3);
+  const choices = drugs.map((d, i) => {
+    const own = single(d);
+    let best = { kind: "asis", drug: d, cost: own == null ? Infinity : own };
+    const consider = c => { if (c.cost != null && c.cost < best.cost - 0.005) best = c; };
+    for (const c of cands[i]) {
+      if (c.kind === "class") {
+        const costs = c.prods.filter(x => !blocked(x)).map(x => ({ x, cost: single(x) })).filter(o => o.cost != null).sort((a, b) => a.cost - b.cost);
+        if (!costs.length) continue;
+        const covered = costs.filter(o => o.x.data && o.x.data.f && o.x.data.f[fid]);
+        const pool = covered.length ? covered : costs;
+        const mid = pool[Math.floor((pool.length - 1) / 2)]; // a typical covered strength, not just the cheapest one
+        consider({ kind: "class", drug: mid.x, cost: mid.cost, ing: c.ing, cls: c.cls });
+      } else if (!blocked(c.drug)) consider({ kind: c.kind, drug: c.drug, cost: single(c.drug) });
+    }
+    return best;
+  });
+  const fin = estimate(plan, choices.map(c => c.drug), ph, cap);
+  return { ...fin, asis, choices, switched: choices.filter(c => c.kind !== "asis").length };
+}
+
+async function compare() {
+  const y = +$("#year").value, st = $("#state").value, county = $("#county").value;
+  if (!y || !st) { setStatus("Pick a plan year and state first."); return; }
+  if (!S.drugs.length) { setStatus("Add at least one prescription."); $("#pick").focus(); return; }
+  const bad = S.drugs.find(d => !(+d.qty > 0));
+  if (bad) { setStatus(`Enter how much ${bad.label} you get every 30 days.`); return; }
+  const opts = { same: $("#alt-same").checked, cls: $("#alt-class").checked, past: $("#alt-past").checked };
+  const altsOn = opts.same || opts.cls;
+  $("#go").disabled = true; setStatus("Loading plans and prices…", true);
+  try {
+    await ensureCatalog();
+    const data = await getState(y, st);
+    const notes = [];
+    if (altsOn && opts.cls && S.drugs.some(d => { const e = catalog.byRx.get(d.rx); return e && !CLASS_BY_KEY.has(e.ingKey); }) && apiKey()) setStatus("Asking Claude for similar drugs…", true);
+    const alts = altsOn ? await Promise.all(S.drugs.map(d => findAlternatives(d, opts, notes))) : S.drugs.map(() => null);
+    const need = S.drugs.map(d => d.rx);
+    alts.forEach(a => { if (!a) return; a.same.forEach(e => need.push(e.rx)); a.ingr.forEach(e => need.push(e.rx)); a.cls.forEach(g => g.prods.forEach(e => need.push(e.rx))); });
+    const total = new Set(need).size;
+    await loadRxAll(y, need, (n, t) => setStatus(t > S.drugs.length ? `Checking your drugs and ${t - S.drugs.length} alternatives… ${n} of ${t}` : "Loading prices…", true));
+    const rxData = async rx => { try { return await getRx(y, rx); } catch (e) { return null; } };
+    const drugs = await Promise.all(S.drugs.map(async d => ({ ...d, data: await rxData(d.rx) })));
+    const cands = await Promise.all(S.drugs.map(async (d, i) => {
+      const a = alts[i];
+      if (!a) return [];
+      const out = [];
+      for (const e of a.same) out.push({ kind: "same", drug: mkDrug(d, e, await rxData(e.rx), "same") });
+      for (const e of a.ingr) out.push({ kind: "ingr", drug: mkDrug(d, e, await rxData(e.rx), "ingr") });
+      for (const g of a.cls) {
+        const prods = [];
+        for (const e of g.prods) prods.push(mkDrug(d, e, await rxData(e.rx), "class"));
+        out.push({ kind: "class", ing: g.ing, cls: g.cls, prods });
+      }
+      return out;
+    }));
+    const plans = data.plans.filter(p => !county || p[8] === 0 || (Array.isArray(p[8]) && p[8].includes(county)));
+    const cap = capFor(y), ph = pharm();
+    setStatus(`Comparing ${plans.length} plans…`, true);
+    await new Promise(r => setTimeout(r, 0));
+    const res = plans.map(p => optimize(p, drugs, cands, ph, cap, opts));
+    const checked = alts.map((a, i) => a ? { label: S.drugs[i].label, same: a.same.length, ingr: a.ingr.length, cls: a.cls.map(g => g.ing), src: a.src } : null);
+    S.results = { y, st, county, countyName: county ? ((data.counties || []).find(c => c[0] === county) || [, ""])[1] : "", data, res, drugs, cap, altsOn, opts, notes, checked, total };
+    S.shown = 25;
+    renderResults();
+    setStatus("");
+    save();
+  } catch (e) {
+    setStatus(e && e.code === "missing" ? "No plan data for that state and year." : "Couldn't load plan data. Try again in a moment.");
+  } finally { $("#go").disabled = false; }
+}
+
+/* ---------- Results ---------- */
+function filters() {
+  return { all: $("#f-all") ? $("#f-all").checked : true, type: ($("#f-type") || { value: "" }).value, sort: ($("#f-sort") || { value: "total" }).value };
+}
+function renderResults() {
+  const R = S.results;
+  if (!R) return;
+  const prev = filters();
+  let list = R.res.slice();
+  const coverAllCount = list.filter(r => r.coversAll).length;
+  if (prev.all && coverAllCount) list = list.filter(r => r.coversAll);
+  if (prev.type) list = list.filter(r => r.type === prev.type);
+  const asisSort = prev.sort === "asis" && R.altsOn;
+  const key = prev.sort === "premium" ? r => r.prem ?? 1e9 : asisSort ? r => r.asis.total : r => r.total;
+  const unk = r => asisSort ? r.asis.unknown : r.unknown;
+  list.sort((a, b) => (a.noCostData - b.noCostData) || (unk(a) - unk(b)) || key(a) - key(b));
+  const complete = list.filter(r => !r.unknown && !r.noCostData);
+  const best = complete.slice().sort((a, b) => a.total - b.total)[0];
+  const bestAsis = R.altsOn ? R.res.filter(r => !r.asis.unknown && !r.noCostData && (!prev.all || !coverAllCount || r.asis.coversAll)).sort((a, b) => a.asis.total - b.asis.total)[0] : null;
+  const max = Math.max(1, ...list.slice(0, S.shown).filter(r => !r.unknown).map(r => r.total));
+  const where = `${R.countyName ? R.countyName + " County, " : ""}${R.st}`;
+  const priceInfo = R.data.prices;
+  let h = `<div class="rhead"><p class="kicker">${R.y} plan year · ${esc(where)}</p><h2>${best ? `${esc(money0.format(best.total))} a year with ${esc(best.name)}${best.switched ? `, with ${best.switched} switch${best.switched === 1 ? "" : "es"}` : ""}` : "No complete estimates"}</h2>
+    ${bestAsis && best && (bestAsis !== best || best.switched) ? `<p class="meta">Taking everything as prescribed, the lowest is ${esc(money0.format(bestAsis.asis.total))} with ${esc(bestAsis.name)}.</p>` : ""}
+    <p class="meta">${R.res.length} plan${R.res.length === 1 ? "" : "s"} in ${esc(where)}${prev.all && coverAllCount ? `, ${coverAllCount} cover all your drugs` : ""}. Yearly out-of-pocket cap for covered drugs: ${money0.format(R.cap)}.</p></div>`;
+  if (!R.county) h += `<p class="notice">Showing plans across all of ${esc(R.st)}. Medicare Advantage plans are sold county by county, so pick your county for an exact list.</p>`;
+  if (!priceInfo) h += `<p class="notice warn">Medicare hasn't published drug prices yet, so estimates only include flat copays and premiums. Plans with coinsurance tiers show as incomplete.</p>`;
+  else if (!priceInfo.own) h += `<p class="notice warn">Medicare publishes ${R.y} plan prices in January. Until then, these ${R.y} estimates use typical ${priceInfo.year} prices for the same drugs, so treat dollar amounts on coinsurance tiers as rough.</p>`;
+  if (prev.all && !coverAllCount) h += `<p class="notice warn">No plan here covers all of your drugs${R.altsOn ? ", even with switches" : ""}. All plans are shown; uncovered drugs are counted at full price.</p>`;
+  if (R.altsOn) {
+    const lines = (R.checked || []).filter(Boolean).map(c => {
+      const bits = [];
+      if (c.same) bits.push(`${c.same} other version${c.same === 1 ? "" : "s"}`);
+      if (c.ingr) bits.push(`${c.ingr} same-ingredient product${c.ingr === 1 ? "" : "s"}`);
+      if (c.cls.length) bits.push(`${c.cls.length} similar drug${c.cls.length === 1 ? "" : "s"} (${c.cls.slice(0, 6).join(", ")}${c.cls.length > 6 ? ", …" : ""})`);
+      else if (R.opts.cls && c.src === "none") bits.push("no similar drugs in the built-in list");
+      return `<li><b>${esc(c.label)}</b>: ${esc(bits.join(", ") || "no alternatives found")}</li>`;
+    }).join("");
+    h += `<details class="checked"><summary>Alternatives checked for each drug</summary><ul>${lines}</ul></details>`;
+    if (R.opts.cls) h += `<p class="notice">"Similar drug" and "Same ingredient" switches need your prescriber's OK, and their dose would be set by your prescriber. For those, the estimate uses a typical strength of the alternative.</p>`;
+    (R.notes || []).forEach(n => { h += `<p class="notice">${esc(n)}</p>`; });
+  }
+  h += `<div class="toolbar">
+      <label class="check"><input type="checkbox" id="f-all" ${prev.all ? "checked" : ""}> Only plans that cover all my drugs</label>
+      <label class="vh" for="f-type">Plan type</label><select id="f-type" style="width:auto"><option value="">All plan types</option><option value="PDP" ${prev.type === "PDP" ? "selected" : ""}>Drug plans (PDP)</option><option value="MA" ${prev.type === "MA" ? "selected" : ""}>Medicare Advantage</option></select>
+      <label class="vh" for="f-sort">Sort</label><select id="f-sort" style="width:auto"><option value="total">Lowest yearly cost${R.altsOn ? " with switches" : ""}</option>${R.altsOn ? `<option value="asis" ${prev.sort === "asis" ? "selected" : ""}>Lowest cost as prescribed</option>` : ""}<option value="premium" ${prev.sort === "premium" ? "selected" : ""}>Lowest premium</option></select>
+      <span class="legend"><span><i style="background:var(--rx)"></i>Premiums</span><span><i style="background:var(--drug)"></i>Drug costs</span></span>
+    </div>`;
+  if (!list.length) h += `<p class="notice">No plans match these filters.</p>`;
+  h += `<ol class="plans">${list.slice(0, S.shown).map(r => planHTML(r, max, R.altsOn)).join("")}</ol>`;
+  if (list.length > S.shown) h += `<button type="button" class="btn-sm ghost more" id="more">Show ${Math.min(25, list.length - S.shown)} more of ${list.length - S.shown}</button>`;
+  $("#results").innerHTML = h;
+}
+const KIND = { same: "Same drug", ingr: "Same ingredient", class: "Similar drug" };
+function planHTML(r, max, altsOn) {
+  const partial = r.unknown || r.noCostData;
+  const pw = !partial ? (r.premium / max) * 100 : 0, dw = !partial ? (r.drugTotal / max) * 100 : 0;
+  const totalTxt = r.noCostData ? "No cost data" : r.unknown ? "Incomplete" : money0.format(r.total);
+  const drugs = r.per.map((x, i) => {
+    const ch = r.choices ? r.choices[i] : { kind: "asis" };
+    const was = r.asis ? r.asis.per[i] : null;
+    const flags = x.info ? [x.info[1] & 1 ? "PA" : "", x.info[1] & 2 ? "ST" : "", x.info[1] & 4 ? `QL ${x.info[2] || ""}${x.info[3] ? "/" + x.info[3] + "d" : ""}` : ""].filter(Boolean) : [];
+    const first = x.months[0], later = x.months[11];
+    const status = !x.info ? `<span class="chip">Not covered</span>` : `<span class="chip">Tier ${esc(x.info[0])}</span>${flags.map(f => `<span class="chip">${esc(f)}</span>`).join("")}`;
+    const detail = x.months.includes(null) ? (x.unit == null ? "price not published" : "cost sharing not published")
+      : !x.info ? `full price, ${fmt(first)}/mo`
+      : first === later ? `${fmt(first)} a month` : `${fmt(first)} in Jan, ${fmt(later)} by Dec`;
+    const sw = ch.kind !== "asis";
+    const kind = sw ? `<span class="chip k">${esc(KIND[ch.kind])}${ch.kind === "class" && ch.cls ? " · " + esc(ch.cls) : ""}</span>` : "";
+    const qtyNote = sw && was && x.d.qty !== was.d.qty ? ` · about ${+x.d.qty.toFixed(2)} per 30 days` : "";
+    const wasCost = !was ? "" : !was.info ? (was.months.includes(null) ? "not covered by this plan" : `not covered by this plan, ${fmtY(was.total)}/yr at full price`) : was.months.includes(null) ? "cost unknown" : `${fmtY(was.total)}/yr`;
+    const wasLine = sw && was ? `<span class="was">Instead of ${esc(was.d.label)}: ${esc(wasCost)}.${ch.kind === "same" ? "" : " Ask your prescriber."}</span>` : "";
+    return `<div class="pd${sw ? " sw" : ""}" data-st="${x.st}"><span class="pd-n">${sw ? '<span class="arrow" aria-hidden="true">→ </span>' : ""}${esc(x.d.label)}</span><span class="pd-c">${x.months.includes(null) ? "—" : fmtY(x.total) + "/yr"}</span>
+      <span class="pd-s">${kind}${status}<span>${esc(detail)}${x.typical ? " · typical price" : ""}${esc(qtyNote)}</span></span>${wasLine}</div>`;
+  }).join("");
+  const months = r.per.some(x => x.info) && !partial ? `<details class="months"><summary>Month by month</summary><div class="mtable"><table>
+      <thead><tr><th scope="col">Drug</th>${MONTHS.map(m => `<th scope="col">${m}</th>`).join("")}<th scope="col">Year</th></tr></thead>
+      <tbody>${r.per.map(x => `<tr><td>${esc(x.d.label)}</td>${x.months.map(v => `<td>${fmt(v)}</td>`).join("")}<td>${fmtY(x.total)}</td></tr>`).join("")}
+      <tr><td>Premium</td>${MONTHS.map(() => `<td>${fmt(r.prem || 0)}</td>`).join("")}<td>${fmtY(r.premium)}</td></tr></tbody>
+      <tfoot><tr><td>Total</td>${MONTHS.map((_, i) => `<td>${fmt(r.per.reduce((a, x) => a + (x.months[i] || 0), 0) + (r.prem || 0))}</td>`).join("")}<td>${fmtY(r.total)}</td></tr></tfoot>
+    </table></div></details>` : "";
+  return `<li class="plan${partial ? " partial" : ""}">
+    <div class="p-head"><h3 class="p-name">${esc(r.name)}</h3><span class="p-total"><b>${esc(totalTxt)}</b><small>${partial ? "" : altsOn && r.switched ? `with ${r.switched} switch${r.switched === 1 ? "" : "es"}` : "estimated per year"}</small>${!partial && altsOn && r.switched && !r.asis.unknown && r.asis.total - r.total >= 1 ? `<small class="save">Save ${esc(money0.format(r.asis.total - r.total))} vs ${esc(money0.format(r.asis.total))} as prescribed</small>` : ""}</span>
+      <span class="p-id">${esc(r.id)} · ${r.type === "PDP" ? "Drug plan (PDP)" : "Medicare Advantage"} · ${esc(r.org)}${r.snp ? '<span class="tag">Special needs</span>' : ""}</span></div>
+    ${partial ? "" : `<div class="bar" aria-hidden="true"><i class="bp" style="width:${pw.toFixed(2)}%"></i><i class="bd" style="width:${dw.toFixed(2)}%"></i></div>`}
+    <div class="p-facts"><span>Premium <b>${r.prem == null ? "—" : fmt(r.prem)}</b>/mo</span><span>Deductible <b>${r.ded == null ? "—" : fmtY(r.ded)}</b></span>${partial ? "" : `<span>Drugs <b>${fmtY(r.drugTotal)}</b>/yr</span>`}${r.hitCap ? `<span>Reaches the yearly cap</span>` : ""}</div>
+    <div class="p-drugs">${drugs}</div>
+    ${months}
+  </li>`;
+}
+
+/* ---------- Wiring ---------- */
+$("#f").addEventListener("submit", e => { e.preventDefault(); compare(); });
+$("#year").addEventListener("change", async () => {
+  catalog = null;
+  fillStates($("#state").value);
+  await fillCounties($("#county").value);
+  // Re-check each drug exists in the new year
+  const y = +$("#year").value;
+  try {
+    await ensureCatalog();
+    const have = new Set(catalog.list.map(e => e.rx));
+    const gone = S.drugs.filter(d => !have.has(d.rx));
+    if (gone.length) setStatus(`${gone.map(d => d.label).join(", ")} ${gone.length === 1 ? "isn't" : "aren't"} on any ${y} plan's list.`);
+  } catch (e) {}
+  save();
+});
+$("#state").addEventListener("change", async () => { await fillCounties(""); save(); });
+$("#county").addEventListener("change", save);
+document.querySelectorAll('input[name="pharm"]').forEach(r => r.addEventListener("change", () => { save(); if (S.results) compare(); }));
+["alt-same", "alt-class", "alt-past"].forEach(id => $("#" + id).addEventListener("change", () => { save(); if (S.results) compare(); }));
+$("#mydrugs").addEventListener("click", e => {
+  const b = e.target.closest("[data-rm]");
+  if (!b) return;
+  S.drugs.splice(+b.dataset.rm, 1); renderDrugs(); save();
+});
+$("#mydrugs").addEventListener("input", e => {
+  const i = e.target.dataset && e.target.dataset.q;
+  if (i == null) return;
+  const v = parseFloat(e.target.value);
+  S.drugs[+i].qty = isFinite(v) ? v : null; save();
+});
+$("#results").addEventListener("change", e => { if (["f-all", "f-type", "f-sort"].includes(e.target.id)) { S.shown = 25; renderResults(); } });
+$("#results").addEventListener("click", e => { if (e.target.id === "more") { S.shown += 25; renderResults(); } });
+attachPicker();
+renderDrugs();
+
+(async () => {
+  if (!(await loadIndex())) return;
+  const saved = load();
+  const years = (S.index.years || []).map(y => String(y.year));
+  const cy = String(new Date().getFullYear());
+  $("#year").value = saved && years.includes(saved.year) ? saved.year : years.includes(cy) ? cy : years[years.length - 1];
+  fillStates(saved && saved.state);
+  await fillCounties(saved && saved.county);
+  if (saved && saved.alts) { $("#alt-same").checked = saved.alts.same !== false; $("#alt-class").checked = saved.alts.cls !== false; $("#alt-past").checked = !!saved.alts.past; }
+  $("#althint").textContent = "For each plan, the estimate uses the cheapest option for each of your drugs. Similar drugs come from a built-in list of common drug classes" +
+    (apiKey() ? "; for anything else, Claude suggests them using the API key you saved on the Formulary Finder page." : ". Save an Anthropic API key on the Formulary Finder page and Claude will suggest them for any drug.");
+  if (saved && saved.pharm != null) { const r = document.querySelector(`input[name="pharm"][value="${saved.pharm}"]`); if (r) r.checked = true; }
+  if (saved && Array.isArray(saved.drugs) && saved.drugs.length) {
+    try { S.names = S.names || await getData("names.json"); } catch (e) {}
+    for (const d of saved.drugs) await addDrug(d.rx, d.qty);
+    if ($("#state").value) compare();
+  }
+})();
+if (window.__FF_TEST__) window.__costTest = { S, estimate, addDrug, compare, ensureCatalog, searchCatalog, renderResults, fillStates, fillCounties, loadIndex, splitLabel, formGroup, findAlternatives, get catalog() { return catalog; } };
+})();
+</script>
+</body>
+</html>

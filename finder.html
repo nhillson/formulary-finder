@@ -1,0 +1,1463 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Formulary Finder</title>
+<meta name="description" content="Find close substitutes for a prescription and check which ones your health plan's drug list covers, with tier, prior authorization, step therapy and quantity limits.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232445AE'/%3E%3Ctext x='32' y='46' font-family='Arial,sans-serif' font-size='40' font-weight='700' text-anchor='middle' fill='%23fff'%3E%E2%84%9E%3C/text%3E%3C/svg%3E">
+<style>
+:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0}
+img{max-width:100%}
+[hidden]{display:none!important}
+</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,500..800&family=IBM+Plex+Mono:wght@400;500&family=Public+Sans:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: pharmacy-counter workbench. The Rx label (what you take, your plan's list) sits left; the readout of substitutes and coverage fills the right. One column on phones. */
+:root{
+  --paper:#F2F5F8;
+  --label:#FFFFFF;
+  --ink:#13233A;
+  --ink-2:#4A5A6F;
+  --ink-3:#6F7C90;
+  --rule:#D5DDE6;
+  --rule-2:#E6EBF0;
+  --rx:#2445AE;
+  --rx-strong:#1A3486;
+  --rx-ink:#FFFFFF;
+  --rx-soft:#E4EAF9;
+  --ok:#1B7346; --ok-soft:#DFF1E6;
+  --warn:#9A5600; --warn-soft:#FAEAD3;
+  --bad:#A2302A; --bad-soft:#F7E1DF;
+  --none:#687384; --none-soft:#E9EDF1;
+  --hl:#FFE08A;
+  --shadow:0 10px 28px rgba(19,35,58,.16);
+  --display:"Archivo","Helvetica Neue",Arial,sans-serif;
+  --body:"Public Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#0E151E; --label:#151F2B; --ink:#E5EBF2; --ink-2:#A6B2C2; --ink-3:#8392A4; --rule:#2A3747; --rule-2:#202C3A;
+    --rx:#8EA6FF; --rx-strong:#B4C4FF; --rx-ink:#0E1730; --rx-soft:#1B2847;
+    --ok:#5FCB92; --ok-soft:#14301F; --warn:#F0AC52; --warn-soft:#3A2810; --bad:#F08A80; --bad-soft:#3A1A17; --none:#98A4B4; --none-soft:#222D3A;
+    --hl:#6B5413; --shadow:0 10px 28px rgba(0,0,0,.5);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0E151E; --label:#151F2B; --ink:#E5EBF2; --ink-2:#A6B2C2; --ink-3:#8392A4; --rule:#2A3747; --rule-2:#202C3A;
+  --rx:#8EA6FF; --rx-strong:#B4C4FF; --rx-ink:#0E1730; --rx-soft:#1B2847;
+  --ok:#5FCB92; --ok-soft:#14301F; --warn:#F0AC52; --warn-soft:#3A2810; --bad:#F08A80; --bad-soft:#3A1A17; --none:#98A4B4; --none-soft:#222D3A;
+  --hl:#6B5413; --shadow:0 10px 28px rgba(0,0,0,.5);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--paper);color:var(--ink);font-family:var(--body);font-size:16.5px;line-height:1.55;-webkit-text-size-adjust:100%}
+.wrap{max-width:1140px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:28px 48px;display:grid;gap:28px}
+.top{display:grid;gap:10px}
+.brand{display:flex;align-items:center;gap:12px}
+.rxmark{font-family:var(--display);font-weight:800;font-size:27px;line-height:1;width:44px;height:44px;flex:none;display:grid;place-items:center;border-radius:10px;background:var(--rx);color:var(--rx-ink)}
+h1{margin:0;font-family:var(--display);font-stretch:125%;font-weight:800;font-size:clamp(28px,6vw,44px);line-height:1.02;letter-spacing:-0.01em;text-wrap:balance}
+.lede{margin:0;color:var(--ink-2);font-size:16px;max-width:64ch}
+.bench{display:grid;gap:24px;grid-template-columns:minmax(0,1fr)}
+@media (min-width:920px){.bench{grid-template-columns:350px minmax(0,1fr);align-items:start}}
+
+/* Rx label */
+.rxlabel{background:var(--label);border:1px solid var(--rule);border-radius:12px;min-width:0}
+.rxhead{border-radius:11px 11px 0 0;display:flex;justify-content:space-between;gap:12px;padding:9px 16px;background:var(--rx);color:var(--rx-ink);font-family:var(--mono);font-size:11.5px;letter-spacing:.09em;text-transform:uppercase}
+.fields{display:grid;gap:16px;padding:18px 16px}
+.field{display:grid;gap:6px;min-width:0}
+.field > label,.flabel{font-family:var(--mono);font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2)}
+.opt{text-transform:none;letter-spacing:0;color:var(--ink-3);font-family:var(--body);font-size:12px;margin-left:4px}
+input[type=text],input[type=search],textarea{width:100%;font:inherit;font-size:16px;color:var(--ink);background:var(--paper);border:1px solid var(--rule);border-radius:8px;padding:10px 12px}
+textarea{font-size:15px;line-height:1.45;resize:vertical}
+input::placeholder,textarea::placeholder{color:var(--ink-3)}
+input:focus-visible,textarea:focus-visible,button:focus-visible,summary:focus-visible,.check input:focus-visible{outline:2px solid var(--rx);outline-offset:2px}
+#drug{font-family:var(--display);font-stretch:110%;font-weight:700;font-size:19px}
+.drop{border:1.5px dashed var(--rule);border-radius:10px;padding:12px;display:grid;gap:10px;background:var(--label)}
+.drop.over{border-color:var(--rx);background:var(--rx-soft)}
+.li-name{font-weight:600;display:flex;align-items:center;gap:8px;flex-wrap:wrap;overflow-wrap:anywhere}
+.li-meta{font-family:var(--mono);font-size:12px;color:var(--ink-3)}
+.li-empty{margin:0;color:var(--ink-2);font-size:14px}
+.tag{font-family:var(--mono);font-size:10.5px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;padding:2px 7px;border-radius:999px;background:var(--warn-soft);color:var(--warn)}
+.dropbtns{display:flex;gap:8px;flex-wrap:wrap}
+.btn-sm{font:inherit;font-size:14px;font-weight:600;padding:7px 12px;border-radius:8px;border:1px solid var(--rx);background:var(--rx);color:var(--rx-ink);cursor:pointer}
+.btn-sm.ghost{background:transparent;color:var(--rx)}
+.btn-sm:disabled{opacity:.5;cursor:default}
+.hint{margin:0;font-size:12.5px;color:var(--ink-3);line-height:1.45}
+.vh{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;overflow:hidden}
+.pastebox{display:grid;gap:8px}
+.claudeopt{display:grid;gap:6px;padding:12px;border-radius:10px;background:var(--rx-soft)}
+.keybox{border:1px solid var(--rule);border-radius:10px;background:var(--label)}
+.keybox > summary{cursor:pointer;list-style:none;padding:11px 36px 11px 12px;font-weight:600;font-size:14.5px;color:var(--rx);position:relative}
+.keybox > summary::-webkit-details-marker{display:none}
+.keybox > summary::after{content:"";position:absolute;right:16px;top:16px;width:7px;height:7px;border-right:1.5px solid var(--rx);border-bottom:1.5px solid var(--rx);transform:rotate(45deg)}
+.keybox[open] > summary::after{transform:rotate(-135deg);top:19px}
+.keyin{display:grid;gap:8px;padding:0 12px 12px}
+.keyin input{font-family:var(--mono);font-size:15px}
+.linkbtn{font:inherit;font-size:13px;padding:0;border:0;background:none;color:var(--rx);text-decoration:underline;text-underline-offset:2px;cursor:pointer}
+a{color:var(--rx)}
+.check{display:flex;gap:10px;align-items:flex-start;font-size:14.5px;font-weight:500;cursor:pointer}
+.check input{width:18px;height:18px;margin:2px 0 0;accent-color:var(--rx);flex:none}
+.go{font-family:var(--display);font-stretch:112%;font-weight:700;font-size:17px;letter-spacing:.01em;padding:13px 16px;border:0;border-radius:10px;background:var(--rx);color:var(--rx-ink);cursor:pointer}
+.go:hover{background:var(--rx-strong)}
+.go:disabled{opacity:.55;cursor:progress}
+.status{min-height:22px;display:flex;align-items:center;gap:10px;font-size:13.5px;color:var(--ink-2);flex-wrap:wrap}
+.spin{width:14px;height:14px;border-radius:50%;border:2px solid var(--rule);border-top-color:var(--rx);animation:sp .8s linear infinite;flex:none}
+@keyframes sp{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.spin{animation-duration:2.4s}}
+.stop{font:inherit;font-size:13px;padding:3px 10px;border-radius:999px;border:1px solid var(--rule);background:var(--label);color:var(--ink);cursor:pointer}
+
+/* Readout */
+main{display:grid;gap:30px;min-width:0}
+#readout{display:grid;gap:22px;min-width:0}
+.rhead{display:grid;gap:4px}
+.kicker{margin:0;font-family:var(--mono);font-size:11.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-3)}
+.rhead h2{margin:0;font-family:var(--display);font-stretch:118%;font-weight:800;font-size:clamp(24px,4.6vw,34px);line-height:1.1;text-wrap:balance;overflow-wrap:anywhere}
+.meta{margin:0;color:var(--ink-2);font-size:14px}
+.example,.notice,.caution{margin:0;padding:10px 14px;border-radius:10px;font-size:14px;max-width:78ch}
+.example{background:var(--warn-soft);color:var(--ink)}
+.notice{background:var(--none-soft);color:var(--ink-2)}
+.caution{background:var(--rx-soft);color:var(--ink)}
+.caution b{color:var(--rx)}
+h3{margin:0;font-family:var(--mono);font-size:11.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-2);font-weight:500}
+.sum{display:grid;background:var(--label);border:1px solid var(--rule);border-radius:12px;overflow:hidden}
+.sum > div{padding:16px;display:grid;gap:10px;align-content:start;min-width:0}
+.sum-cur{background:var(--rx-soft);border-bottom:1px solid var(--rule)}
+@media (min-width:720px){.sum.two{grid-template-columns:minmax(0,1fr) minmax(0,1.35fr)}.sum.two .sum-cur{border-bottom:0;border-right:1px solid var(--rule)}}
+.cur-nm{font-family:var(--display);font-stretch:110%;font-weight:700;font-size:20px;line-height:1.2;overflow-wrap:anywhere}
+.cur-row{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center}
+.cur-conds{margin:0;font-size:13.5px;color:var(--ink-2)}
+.bets{list-style:none;margin:0;padding:0;display:grid;gap:12px;counter-reset:b}
+.bets li{display:grid;grid-template-columns:24px minmax(0,1fr) auto;gap:2px 10px;align-items:center;counter-increment:b}
+.bets li::before{content:counter(b);grid-row:1 / span 2;font-family:var(--mono);font-size:12px;width:24px;height:24px;display:grid;place-items:center;border-radius:50%;border:1px solid var(--rule);color:var(--ink-2)}
+.bn{font-weight:600;overflow-wrap:anywhere}
+.bm{grid-column:2;font-size:12.5px;color:var(--ink-3)}
+.bets .capw{grid-column:3;grid-row:1 / span 2}
+.read{background:var(--label);border:1px solid var(--rule);border-radius:12px;padding:14px 16px;display:grid;gap:6px}
+.read p{margin:0;max-width:72ch}
+.read .who{font-family:var(--mono);font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--rx)}
+
+.grp{display:grid;gap:12px;min-width:0}
+.grp-h{display:grid;gap:2px}
+.gt{margin:0;font-family:var(--display);font-stretch:112%;font-weight:700;font-size:19px;line-height:1.25;color:var(--ink);text-transform:none;letter-spacing:0}
+.gt .close{font-family:var(--mono);font-size:11px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--rx);margin-right:8px;vertical-align:2px}
+.gs{margin:0;font-size:13.5px;color:var(--ink-2);max-width:72ch}
+details.grp > summary{cursor:pointer;list-style:none;display:grid;gap:2px;padding:12px 40px 12px 14px;border:1px solid var(--rule);border-radius:12px;background:var(--label);position:relative}
+details.grp > summary::-webkit-details-marker{display:none}
+details.grp > summary::after{content:"";position:absolute;right:18px;top:22px;width:8px;height:8px;border-right:1.5px solid var(--ink-3);border-bottom:1.5px solid var(--ink-3);transform:rotate(45deg)}
+details.grp[open] > summary::after{transform:rotate(-135deg);top:26px}
+.ings{display:grid;gap:12px}
+.ing{background:var(--label);border:1px solid var(--rule);border-radius:12px;overflow:hidden;min-width:0}
+.ing-h{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline;padding:12px 14px 4px}
+.ing-h h4{margin:0;font-family:var(--display);font-stretch:108%;font-weight:700;font-size:16.5px;overflow-wrap:anywhere}
+.sl{color:var(--ink-3);padding:0 .12em}
+.cls{font-size:12.5px;color:var(--ink-3)}
+.ing-note{margin:0;padding:0 14px 8px;font-size:13.5px;color:var(--ink-2);max-width:72ch}
+.prod{border-top:1px solid var(--rule-2)}
+.prod > summary,.prod > .psum{list-style:none;cursor:pointer;display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;justify-content:space-between;padding:10px 14px}
+.prod > summary::-webkit-details-marker{display:none}
+.prod > .psum{cursor:default}
+.pn{display:flex;flex-wrap:wrap;gap:2px 8px;align-items:baseline;min-width:0}
+.nm{font-weight:600;overflow-wrap:anywhere}
+.kd{font-size:12px;color:var(--ink-3)}
+.you{font-family:var(--mono);font-size:10.5px;font-weight:500;letter-spacing:.07em;text-transform:uppercase;padding:2px 7px;border-radius:999px;background:var(--rx-soft);color:var(--rx);align-self:center}
+.pst{display:flex;align-items:center;gap:10px;margin-left:auto}
+.prod:not(.static) > summary .pst::after{content:"";width:7px;height:7px;flex:none;border-right:1.5px solid var(--ink-3);border-bottom:1.5px solid var(--ink-3);transform:rotate(-45deg)}
+.prod[open] > summary .pst::after{transform:rotate(45deg)}
+[data-st]{--sc:var(--none);--sc-soft:var(--none-soft)}
+[data-st=covered]{--sc:var(--ok);--sc-soft:var(--ok-soft)}
+[data-st=conditions]{--sc:var(--warn);--sc-soft:var(--warn-soft)}
+[data-st=unclear],[data-st=listed]{--sc:var(--rx);--sc-soft:var(--rx-soft)}
+[data-st=excluded]{--sc:var(--bad);--sc-soft:var(--bad-soft)}
+.st{font-size:13px;font-weight:600;color:var(--sc);display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.st::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--sc)}
+.prod[data-st=notfound] .nm{color:var(--ink-2)}
+.cap{display:inline-flex;border:1.5px solid var(--sc);border-radius:999px;overflow:hidden;font-family:var(--mono);font-size:12px;line-height:1;white-space:nowrap;font-variant-numeric:tabular-nums}
+.cap b{font-weight:500;background:var(--sc);color:var(--label);padding:5px 8px 5px 10px}
+.cap i{font-style:normal;padding:5px 10px 5px 8px;background:var(--sc-soft);color:var(--sc)}
+.pbody{padding:0 14px 14px;display:grid;gap:10px}
+.conds{margin:0;padding:0;list-style:none;display:flex;flex-wrap:wrap;gap:6px}
+.conds li{font-size:13px;padding:4px 10px;border-radius:999px;background:var(--sc-soft);color:var(--ink)}
+.conds b{font-family:var(--mono);font-weight:500;margin-right:5px;color:var(--sc)}
+.by{margin:0;font-size:12.5px;color:var(--ink-3)}
+.lines{display:grid;gap:3px;background:var(--paper);border-radius:8px;padding:8px 10px;overflow-x:auto}
+.ln{display:grid;grid-template-columns:auto minmax(0,1fr);gap:10px;font-family:var(--mono);font-size:12.5px;line-height:1.5}
+.ln .pg{color:var(--ink-3);white-space:nowrap}
+.ln code{font-family:inherit;white-space:pre-wrap;overflow-wrap:anywhere}
+.more{font-family:var(--mono);font-size:12px;color:var(--ink-3)}
+mark{background:var(--hl);color:var(--ink);border-radius:2px;padding:0 1px}
+.none{margin:0;font-size:13.5px;color:var(--ink-2)}
+.note{background:var(--label);border:1px solid var(--rule);border-radius:12px;padding:16px;display:grid;gap:10px}
+.note textarea{min-height:210px}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.ready{background:var(--label);border:1px dashed var(--rule);border-radius:12px;padding:22px 18px;display:grid;gap:6px}
+.ready p{margin:0;color:var(--ink-2);max-width:64ch}
+
+/* Static sections */
+.side{display:grid;gap:26px;border-top:1px solid var(--rule);padding-top:26px}
+.look,.tips,.codes{display:grid;gap:10px;min-width:0}
+.qres{display:grid;gap:8px}
+.tips ol{margin:0;padding-left:22px;display:grid;gap:8px;max-width:72ch}
+.tips li::marker{font-family:var(--mono);color:var(--ink-3)}
+.codes dl{margin:0;display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px 16px;max-width:72ch}
+.codes dt{font-family:var(--mono);font-weight:500;color:var(--rx)}
+.codes dd{margin:0;color:var(--ink-2)}
+footer p{margin:0;font-size:13px;color:var(--ink-3);max-width:78ch}
+.xlink{margin:0;font-size:14.5px;font-weight:600}
+.xlink a,a{color:var(--rx)}
+
+/* Medication suggestions */
+.acfield{position:relative}
+.ac{position:absolute;left:0;right:0;top:100%;margin:4px 0 0;padding:4px;list-style:none;z-index:30;background:var(--label);border:1px solid var(--rule);border-radius:10px;box-shadow:var(--shadow);max-height:min(340px,52vh);overflow:auto}
+.ac li{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:2px 12px;padding:9px 10px;border-radius:7px;cursor:pointer}
+.ac li[aria-selected="true"],.ac li[data-i]:hover{background:var(--rx-soft)}
+.ac .an{font-weight:600;color:var(--ink);overflow-wrap:anywhere}
+.ac .ag{font-size:12.5px;color:var(--ink-3);overflow-wrap:anywhere}
+.ac li.ah{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);padding:6px 10px 2px;cursor:default}
+.dym{font:inherit;font-weight:600;color:var(--rx);background:none;border:0;padding:0;text-decoration:underline;text-underline-offset:2px;cursor:pointer}
+
+/* Medicare plan picker */
+.medibox{display:grid;gap:8px}
+.medrow{display:flex;gap:8px;flex-wrap:wrap}
+select{font:inherit;font-size:15px;color:var(--ink);background:var(--paper);border:1px solid var(--rule);border-radius:8px;padding:8px 10px;flex:1 1 140px;min-width:0}
+select:focus-visible{outline:2px solid var(--rx);outline-offset:2px}
+.mres{display:grid;gap:6px;max-height:360px;overflow:auto}
+.mplan{display:grid;gap:2px;text-align:left;font:inherit;padding:9px 11px;border:1px solid var(--rule);border-radius:8px;background:var(--paper);color:var(--ink);cursor:pointer}
+.mplan:hover{border-color:var(--rx)}
+.mplan:focus-visible{outline:2px solid var(--rx);outline-offset:2px}
+.mp-n{font-weight:600;font-size:14.5px;overflow-wrap:anywhere}
+.mp-m{font-size:12.5px;color:var(--ink-3);overflow-wrap:anywhere}
+</style>
+
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand"><span class="rxmark" aria-hidden="true">℞</span><h1>Formulary Finder</h1></div>
+    <p class="xlink"><a href="./">← On Medicare? Find your lowest-cost drug plan</a></p>
+    <p class="lede">Type the medication you take to see its closest substitutes. Add your plan's drug list and every one of them gets checked for tier, prior authorization, step therapy and quantity limits.</p>
+  </header>
+
+  <div class="bench">
+    <form class="rxlabel" id="f" novalidate>
+      <div class="rxhead"><span>Coverage check</span><span id="rxdate"></span></div>
+      <div class="fields">
+        <div class="field acfield">
+          <label for="drug">Medication you take</label>
+          <input id="drug" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Start typing a brand or generic name" value="Symbicort" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="drug-ac">
+          <ul class="ac" id="drug-ac" role="listbox" aria-label="Medication suggestions" hidden></ul>
+        </div>
+        <div class="field">
+          <label for="use">What it's for <span class="opt">optional</span></label>
+          <input id="use" type="text" autocomplete="off" placeholder="e.g. asthma">
+        </div>
+        <div class="field">
+          <span class="flabel">Your plan's drug list <span class="opt">optional</span></span>
+          <div class="drop" id="drop">
+            <div id="listinfo"></div>
+            <div class="dropbtns">
+              <button type="button" class="btn-sm" id="pickfile">Upload PDF</button>
+              <input id="file" type="file" accept=".pdf,application/pdf,.txt,.csv,text/plain" class="vh" tabindex="-1" aria-hidden="true">
+              <button type="button" class="btn-sm ghost" id="pastebtn">Paste text</button>
+              <button type="button" class="btn-sm ghost" id="medbtn" aria-expanded="false" aria-controls="medibox">Medicare plan</button>
+              <button type="button" class="btn-sm ghost" id="clearlist">Remove</button>
+            </div>
+            <div class="pastebox" id="pastebox" hidden>
+              <textarea id="paste" rows="5" placeholder="Paste the drug list text from your plan's website"></textarea>
+              <div class="row"><button type="button" class="btn-sm" id="pasteuse">Use this text</button></div>
+            </div>
+            <div class="medibox" id="medibox" hidden>
+              <div class="medrow">
+                <label class="vh" for="myear">Plan year</label><select id="myear"></select>
+                <label class="vh" for="mstate">State</label><select id="mstate"><option value="">Any state</option></select>
+              </div>
+              <label class="vh" for="mq">Plan ID or plan name</label>
+              <input id="mq" type="search" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Plan ID (S1234-001) or plan name">
+              <div class="mres" id="mres" aria-live="polite"></div>
+              <p class="hint">From Medicare's public plan data, updated monthly. Covers stand-alone drug plans (PDP) and Medicare Advantage plans with drug coverage. Employer group plans aren't included.</p>
+            </div>
+            <p class="hint">Medicare drug plan? Tap Medicare plan to load its list automatically. For other insurance, look on your plan's member site under Pharmacy for the formulary or drug list. Files are read in this browser and aren't uploaded.</p>
+          </div>
+        </div>
+        <div class="field acfield">
+          <label for="extra">Also check <span class="opt">optional</span></label>
+          <input id="extra" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Names your doctor mentioned, comma separated" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="extra-ac">
+          <ul class="ac" id="extra-ac" role="listbox" aria-label="Medication suggestions" hidden></ul>
+        </div>
+        <div class="claudeopt" id="claudeopt" hidden>
+          <label class="check"><input type="checkbox" id="claudeOn" checked> <span id="claudelabel">Use Claude to find substitutes and read the plan's codes</span></label>
+          <p class="hint" id="claudehint">Covers any medication, not just the built-in list. Sends the medication name and the matching lines to Claude; the rest of your drug list stays here.</p>
+          <div class="row" id="keyrow" hidden><button type="button" class="linkbtn" id="forgetkey">Remove API key</button></div>
+        </div>
+        <details class="keybox" id="keybox" hidden>
+          <summary>Look up any medication with Claude</summary>
+          <div class="keyin">
+            <p class="hint">The built-in list covers about 50 common drug classes. With your own Anthropic API key, Claude can suggest substitutes for any medication and decode your plan's tier codes. Each check uses a small amount of API credit.</p>
+            <label for="apikey" class="flabel">Anthropic API key</label>
+            <input id="apikey" type="password" autocomplete="off" spellcheck="false" placeholder="sk-ant-…">
+            <div class="row"><button type="button" class="btn-sm" id="savekey">Test and save</button><span class="hint" id="keymsg" aria-live="polite"></span></div>
+            <p class="hint">Create a key in the Claude Console (<a href="https://platform.claude.com/docs/en/get-api-key" target="_blank" rel="noopener">how to get one</a>). It's saved only in this browser and sent only to Anthropic. Setting a monthly spend limit on the key is a good idea.</p>
+          </div>
+        </details>
+        <button class="go" id="go" type="submit">Find substitutes</button>
+        <div class="status" id="status" aria-live="polite"></div>
+      </div>
+    </form>
+
+    <main>
+      <div id="readout"></div>
+
+      <div class="side">
+        <section class="look" id="lookup">
+          <h2 class="gt">Search the drug list</h2>
+          <p class="gs">Check any name directly, including ones not suggested here.</p>
+          <input id="q" type="search" autocomplete="off" spellcheck="false" placeholder="Any drug name">
+          <div class="qres" id="qres"></div>
+        </section>
+
+        <section class="tips">
+          <h2 class="gt">If nothing on the list works</h2>
+          <ol>
+            <li>Ask your pharmacist to run a test claim on each option. They can see your actual copay in a minute, which a drug list can't show.</li>
+            <li>Ask your prescriber for an exception. A formulary exception asks the plan to cover a drug that isn't listed; a tiering exception asks to pay a lower tier's price. Medicare drug plans and individual or small-group ACA plans have to decide a standard request within 72 hours, or 24 hours when waiting could seriously harm your health.</li>
+            <li>If the plan says no, you can appeal, and after that ask for an independent external review.</li>
+            <li>For a brand-name drug, check the manufacturer's site for a copay card or patient assistance program. Copay cards generally can't be used with Medicare or Medicaid.</li>
+          </ol>
+        </section>
+
+        <section class="codes">
+          <h2 class="gt">Reading the codes</h2>
+          <dl>
+            <dt>Tier</dt><dd>Cost level. Lower tiers usually mean lower copays. Most plans have 4 to 6 tiers, and the top one is often specialty drugs.</dd>
+            <dt>PA</dt><dd>Prior authorization. Your prescriber has to get the plan's approval before it pays.</dd>
+            <dt>ST</dt><dd>Step therapy. The plan wants you to try a cheaper drug first, and covers this one if that didn't work.</dd>
+            <dt>QL</dt><dd>Quantity limit. Covered up to a set amount per fill or per month.</dd>
+            <dt>SP</dt><dd>Specialty pharmacy. Has to be filled through the plan's specialty pharmacy, often by mail.</dd>
+            <dt>NF</dt><dd>Non-formulary. Not covered unless the plan grants an exception.</dd>
+            <dt>B/D</dt><dd>Medicare only. Covered under Part B or Part D depending on how it's used.</dd>
+          </dl>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <footer>
+    <p>Substitutes come from a built-in list of about 50 common drug classes, or from Claude if you add an API key. This isn't medical advice: a close substitute can still differ in dose, timing, side effects, or interactions, so make any switch with your prescriber. The coverage check reads text, so it can miss a drug listed under another name, and it can't see your copay. Medicare plan data comes from CMS; medication names come from the National Library of Medicine's RxNorm.</p>
+  </footer>
+</div>
+
+<script src="classes.js"></script>
+<script>
+(() => {
+"use strict";
+const $ = (s, r = document) => r.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const tick = () => new Promise(r => setTimeout(r, 0));
+
+/* ---------- Built-in drug classes ----------
+   [class name, uses, note shown before switching, words that mean "wrong form", members]
+   member: display[=search term][!exclude|words]:Brand,Brand ; "/" joins combination ingredients */
+const { USES, RAW } = window.FF_DATA;
+function parseMember(s) {
+  const k = s.indexOf(":");
+  const left = k < 0 ? s : s.slice(0, k);
+  const b = k < 0 ? [] : s.slice(k + 1).split(",").map(x => x.trim()).filter(Boolean);
+  const [ds, ex] = left.split("!");
+  const [g, q] = ds.split("=");
+  return { g: g.trim(), q: (q || g).trim(), ex: ex ? ex.split("|").filter(Boolean) : [], b };
+}
+const CLASSES = RAW.map(r => ({ name: r[0], uses: r[1].split(","), note: r[2], ex: r[3] ? r[3].split("|").filter(Boolean) : [], members: r[4].split(";").map(parseMember) }));
+
+/* ---------- Name matching ---------- */
+const SALT = "(?:propionate|furoate|fumarate|dihydrate|sodium|calcium|potassium|magnesium|hcl|hydrochloride|sulfate|maleate|besylate|succinate|tartrate|mesylate|acetate|bromide|xinafoate|dipropionate|monohydrate|hydrobromide|citrate|phosphate|trihydrate|hemihydrate|aspartate|saccharate|bitartrate|dimesylate|chloride|carbonate|gluconate|lactate|oxalate|valerate|benzoate|hyclate|er|xr|sr|dr|hfa)";
+const COMBO_AFTER = new RegExp("^(?:[\\s,]+" + SALT + "\\b)*\\s*(?:[-\\/]|\\band\\b)\\s*[a-z]{5,}");
+const COMBO_BEFORE = new RegExp("[a-z]{5,}(?:[\\s,]+" + SALT + ")*\\s*(?:[-\\/]|\\band)\\s*$");
+const reEsc = s => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const normWords = s => String(s || "").toLowerCase().replace(/[\/\-]/g, " ").replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
+const phrase = s => normWords(s).split(" ").filter(Boolean).map(reEsc).join("[\\s\\-]*");
+function perms(a) { if (a.length <= 1) return [a]; const out = []; a.forEach((x, i) => perms(a.slice(0, i).concat(a.slice(i + 1))).forEach(p => out.push([x, ...p]))); return out; }
+function makeMatcher(term, generic) {
+  const parts = String(term).split("/").map(s => s.trim()).filter(Boolean);
+  if (!parts.length) return null;
+  if (parts.length > 1) {
+    const sep = "(?:[\\s,]+" + SALT + "\\b)*\\s*(?:[-\\/,]|\\band\\b)\\s*";
+    const alts = perms(parts.slice(0, 3)).map(p => p.map(phrase).join(sep));
+    return { re: new RegExp("\\b(?:" + alts.join("|") + ")\\b", "gi"), single: false };
+  }
+  const ph = phrase(parts[0]);
+  if (!ph) return null;
+  return { re: new RegExp("\\b" + ph + "\\b", "gi"), single: !!generic && !/[\s\-]/.test(parts[0]) };
+}
+function findIn(seg, m) {
+  m.re.lastIndex = 0;
+  let x;
+  while ((x = m.re.exec(seg))) {
+    if (!m.single) return x;
+    const before = seg.slice(Math.max(0, x.index - 40), x.index);
+    const after = seg.slice(x.index + x[0].length, x.index + x[0].length + 40);
+    if (!COMBO_AFTER.test(after) && !COMBO_BEFORE.test(before)) return x;
+    if (!x[0].length) m.re.lastIndex++;
+  }
+  return null;
+}
+function keyOf(term) {
+  const w = normWords(term).split(" ").filter(x => x.length >= 3).sort((a, b) => b.length - a.length);
+  return w[0] || null;
+}
+
+/* ---------- Reading a coverage line ---------- */
+const FLAG_NAMES = { PA: "Prior authorization", ST: "Step therapy", QL: "Quantity limit", SP: "Specialty pharmacy", LD: "Limited distribution", MO: "Mail order", "B/D": "Medicare Part B or D" };
+const FORM_WORDS = /\b(tab|tabs|tablet|cap|caps|capsule|aer|aerosol|inh|inhal\w*|soln|solution|susp|suspension|inj|injection|pen|cream|oint|gel|patch|powder|pwd|er|xr|dr|odt|kit|chew|liquid|syrup|spray|drops|film|mg|mcg|ml|unit|units)\b/i;
+const NOT_NAME = /^(prior|step|quantity|qty|limit|limits|specialty|age|mail|preferred|non|tier|generic|brand|requires?|required|max|min|per|days|covered|excluded|not|only|see|note|tab|tabs|tablet|tablets|cap|caps|capsule|capsules|aer|aerosol|inh|inhaler|inhalation|soln|solution|susp|suspension|inj|injection|pen|pens|cream|oint|ointment|gel|patch|powder|kit|chew|chewable|liquid|syrup|spray|drops|film|ring|implant|oral|nasal|topical|ophthalmic|er|xr|dr|odt|hfa|mcg|mg|ml|blisters?)\b/i;
+const looksLikeName = seg => /^[A-Za-z][A-Za-z\-]{3,}/.test(seg) && !NOT_NAME.test(seg);
+function parseCoverage(text) {
+  const flags = {};
+  if (/\bPA\b/.test(text) || /prior\s*auth/i.test(text)) flags.PA = "";
+  if (/\bST\b/.test(text) || /step\s*therap/i.test(text)) flags.ST = "";
+  const q = text.match(/\bQL\b\s*[:\-]?\s*\(([^)]{2,60})\)/);
+  if (q || /\bQL\b/.test(text) || /quantity\s*limit|qty\s*limit/i.test(text)) flags.QL = q ? q[1].trim() : "";
+  if (/\bSP\b|\bSPEC\b/.test(text)) flags.SP = "";
+  if (/\bLD\b/.test(text)) flags.LD = "";
+  if (/\bMO\b/.test(text)) flags.MO = "";
+  if (/\bB\s*\/\s*D\b|\bBvD\b/.test(text)) flags["B/D"] = "";
+  const excluded = /\bnot covered\b|\bexcluded\b|\bnon-?formulary\b/i.test(text) || /\bNF\b/.test(text);
+  let tier = null;
+  let s = " " + text.replace(/\([^)]*\)/g, " ").replace(/\b(QL|quantity limit|qty limit)\b[^;|]*/gi, " ") + " ";
+  const m = s.match(/\btier\s*([1-7])\b/i) || s.match(/\bT([1-7])\b/);
+  if (m) tier = +m[1];
+  else {
+    s = s.replace(/\d+(?:\.\d+)?(?:\s*[-\/]\s*\d+(?:\.\d+)?)*\s*(?:mg|mcg|gm|g|ml|meq|units?|iu|%|act|hrs?|h|days?)\b/gi, " ")
+         .replace(/\d+(?:\.\d+)?\s*[-\/]\s*\d+(?:\.\d+)?/g, " ")
+         .replace(/\d+\.\d+/g, " ");
+    const c = [...s.matchAll(/(?:^|[\s;,|])([1-7])(?=[\s;,|*]|$)/g)].map(x => +x[1]);
+    if (c.length) tier = c[c.length - 1];
+  }
+  const index = /\.{4,}|…/.test(text) || (/\s\d{2,4}(?:\s*,\s*\d{1,4})*\s*$/.test(text) && !FORM_WORDS.test(text) && !Object.keys(flags).length);
+  return { tier: index ? null : tier, flags: index ? {} : flags, excluded: !index && excluded, index };
+}
+
+/* ---------- Drug lists ---------- */
+function mkLine(p, segs) { return { p, segs, lc: segs.map(x => x.toLowerCase()), all: segs.join(" ").toLowerCase() }; }
+function linesFromText(txt) {
+  const pages = String(txt).split(/\f/);
+  const lines = [];
+  pages.forEach((pg, i) => pg.split(/\r?\n/).forEach(l => {
+    const segs = l.split(/\t+|\s{3,}|\s*\|\s*/).map(x => x.trim()).filter(Boolean);
+    if (segs.length) lines.push(mkLine(i + 1, segs));
+  }));
+  return { lines, pages: pages.length };
+}
+const SAMPLE = [
+ [1, ["Example Health Plan   2026 Drug List (fictional sample)",
+      "How to read this list",
+      "Tier 1   Preferred generic",
+      "Tier 2   Generic",
+      "Tier 3   Preferred brand",
+      "Tier 4   Non-preferred drug",
+      "Tier 5   Specialty",
+      "PA   Prior authorization required",
+      "ST   Step therapy required",
+      "QL   Quantity limit"]],
+ [14, ["RESPIRATORY AGENTS",
+      "Drug name   Tier   Requirements / limits",
+      "albuterol sulfate hfa 108 (90 base) mcg/act   1   QL (2 inhalers per 30 days)",
+      "VENTOLIN HFA 108 (90 base) MCG/ACT   3   QL (2 inhalers per 30 days)",
+      "budesonide-formoterol fumarate dihydrate aer 80-4.5, 160-4.5 mcg/act   2   QL (10.2 gm per 30 days)",
+      "BREYNA AER 80-4.5, 160-4.5 MCG/ACT   2   QL (10.2 gm per 30 days)",
+      "SYMBICORT AER 80-4.5, 160-4.5 MCG/ACT   4   ST; QL (10.2 gm per 30 days)",
+      "fluticasone-salmeterol aer powder 100-50, 250-50, 500-50 mcg/act   1   QL (60 blisters per 30 days)",
+      "WIXELA INHUB 100-50, 250-50, 500-50 MCG/ACT   1   QL (60 blisters per 30 days)",
+      "ADVAIR DISKUS 100-50, 250-50, 500-50 MCG/ACT   4   ST",
+      "ADVAIR HFA 45-21, 115-21, 230-21 MCG/ACT   3",
+      "BREO ELLIPTA 100-25, 200-25 MCG/ACT   3   QL (60 blisters per 30 days)",
+      "DULERA 50-5, 100-5, 200-5 MCG/ACT   4   PA",
+      "TRELEGY ELLIPTA 100-62.5-25, 200-62.5-25 MCG/ACT   3   QL (30 blisters per 30 days)"]],
+ [15, ["fluticasone propionate hfa 44, 110, 220 mcg/act   2",
+      "ARNUITY ELLIPTA 50, 100, 200 MCG/ACT   3",
+      "QVAR REDIHALER 40, 80 MCG/ACT   3",
+      "ASMANEX TWISTHALER 110, 220 MCG/ACT   4   ST",
+      "SPIRIVA RESPIMAT 1.25, 2.5 MCG/ACT   3   QL (4 gm per 30 days)",
+      "montelukast sodium tab 4, 5, 10 mg   1",
+      "fluticasone propionate nasal susp 50 mcg/act   1   QL (16 gm per 30 days)"]]
+];
+function sampleList() {
+  const lines = [];
+  SAMPLE.forEach(([p, rows]) => rows.forEach(r => lines.push(mkLine(p, r.split(/\s{3,}/).map(x => x.trim()).filter(Boolean)))));
+  return { name: "Example Health Plan (fictional)", pages: SAMPLE.length, lines, example: true };
+}
+
+function loadScript(src) {
+  return new Promise((res, rej) => { const s = document.createElement("script"); s.src = src; s.onload = res; s.onerror = () => rej({ code: "lib" }); document.head.appendChild(s); });
+}
+const PDFJS = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/";
+async function loadPdfJs() {
+  if (!window.pdfjsLib) await loadScript(PDFJS + "pdf.min.js");
+  if (!window.pdfjsLib) throw { code: "lib" };
+  window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS + "pdf.worker.min.js";
+  return window.pdfjsLib;
+}
+async function readPdf(file, onProgress) {
+  const lib = await loadPdfJs();
+  const data = new Uint8Array(await file.arrayBuffer());
+  const doc = await lib.getDocument({ data, isEvalSupported: false, disableFontFace: true }).promise;
+  const n = doc.numPages;
+  const lines = [];
+  for (let p = 1; p <= n; p++) {
+    onProgress(p, n);
+    const page = await doc.getPage(p);
+    const tc = await page.getTextContent();
+    const items = [];
+    for (const it of tc.items) {
+      if (!it.str || !it.str.trim()) continue;
+      const t = it.transform;
+      items.push({ x: t[4], y: t[5], w: it.width || 0, h: Math.abs(t[3]) || Math.abs(t[0]) || 8, s: it.str });
+    }
+    items.sort((a, b) => (b.y - a.y) || (a.x - b.x));
+    const rows = [];
+    for (const it of items) {
+      const r = rows[rows.length - 1];
+      if (r && Math.abs(r.y - it.y) <= Math.max(2, Math.min(r.h, it.h) * 0.45)) r.items.push(it);
+      else rows.push({ y: it.y, h: it.h, items: [it] });
+    }
+    for (const r of rows) {
+      r.items.sort((a, b) => a.x - b.x);
+      const segs = []; let cur = ""; let end = null;
+      for (const it of r.items) {
+        if (end !== null) {
+          const gap = it.x - end;
+          if (gap > Math.max(it.h * 1.2, 6)) { if (cur.trim()) segs.push(cur.trim()); cur = ""; }
+          else if (gap > it.h * 0.12 && !/\s$/.test(cur) && !/^\s/.test(it.s)) cur += " ";
+        }
+        cur += it.s; end = it.x + it.w;
+      }
+      if (cur.trim()) segs.push(cur.trim());
+      const clean = segs.map(x => x.replace(/\s+/g, " ")).filter(Boolean);
+      if (clean.length) lines.push(mkLine(p, clean));
+    }
+    page.cleanup();
+    if (p % 4 === 0) await tick();
+  }
+  doc.destroy();
+  return { lines, pages: n };
+}
+
+/* ---------- Building the list of substitutes ---------- */
+const BRAND_SUFFIX = /^(hfa|diskus|inhub|respiclick|ellipta|respimat|handihaler|twisthaler|redihaler|flexhaler|digihaler|aerosphere|sensimist|pressair|neohaler|kwikpen|flextouch|solostar|pen|xr|xl|sr|er|la|cr|cd|cc|ds|odt|xr-odt|mlt|pm|aq|p|z)$/i;
+function coreBrand(b) {
+  let words = String(b).trim().split(/\s+/);
+  const strip = () => {
+    const last = words[words.length - 1];
+    if (words.length > 1 && BRAND_SUFFIX.test(last)) { words.pop(); return true; }
+    const h = last.match(/^(.{4,}?)-([A-Za-z-]+)$/);
+    if (h && BRAND_SUFFIX.test(h[2])) { words[words.length - 1] = h[1]; return true; }
+    return false;
+  };
+  while (strip()) {}
+  const core = words.join(" ");
+  return core.length >= 4 && core.toLowerCase() !== String(b).trim().toLowerCase() ? core : null;
+}
+function brandTerms(b) { const c = coreBrand(b); return c ? [{ text: b, generic: false }, { text: c, generic: false, fallback: true }] : [{ text: b, generic: false }]; }
+function mkIng(g, q, brands, rel, cls, note, ex, typed) {
+  const exRe = ex && ex.length ? new RegExp("\\b(?:" + ex.join("|") + ")\\b", "i") : null;
+  const products = typed
+    ? [{ name: g, kind: "as typed", terms: [{ text: q, generic: false }], exRe }]
+    : [{ name: g, kind: "generic", terms: [{ text: q, generic: true }], exRe }]
+        .concat(brands.map(b => ({ name: b, kind: "brand", terms: brandTerms(b), exRe })));
+  return { g, rel, cls: cls || "", note: note || "", products };
+}
+const ingFromMember = (m, rel, c) => mkIng(m.g, m.q, m.b, rel, c.name, "", c.ex.concat(m.ex));
+
+function builtInHits(input, use) {
+  const q = " " + normWords(input) + " ";
+  if (q.trim().length < 3) return [];
+  let hits = [];
+  for (const c of CLASSES) for (const m of c.members) {
+    let len = 0;
+    for (const cand of [m.g, m.q]) { const n = normWords(cand); if (n.length >= 4 && q.includes(" " + n + " ")) len = Math.max(len, n.length); }
+    for (const b of m.b) { const n = normWords(b); if (n.length >= 3 && q.includes(" " + n + " ")) len = Math.max(len, n.length); }
+    if (len) hits.push({ c, m, len });
+  }
+  if (!hits.length) {
+    const w = normWords(input).split(" ")[0] || "";
+    if (w.length >= 5) for (const c of CLASSES) for (const m of c.members)
+      if ([m.g, m.q].concat(m.b).map(normWords).some(n => n.startsWith(w))) hits.push({ c, m, len: 1 });
+    hits = hits.slice(0, 6);
+  } else {
+    const max = Math.max(...hits.map(h => h.len));
+    hits = hits.filter(h => h.len === max);
+  }
+  const uw = normWords(use).split(" ").filter(w => w.length >= 4);
+  if (uw.length && new Set(hits.map(h => h.c)).size > 1) {
+    const f = hits.filter(h => h.c.uses.some(u => uw.some(w => USES[u].includes(w))) || uw.some(w => h.c.name.toLowerCase().includes(w)));
+    if (f.length) hits = f;
+  }
+  return hits;
+}
+function planFromBuiltIn(drug, use) {
+  const H = builtInHits(drug, use);
+  const ings = []; const seen = new Set();
+  const add = (ing) => { const k = normWords(ing.g); if (seen.has(k)) return false; seen.add(k); ings.push(ing); return true; };
+  if (!H.length) {
+    const d = medLookup(drug);
+    if (d) {
+      add(mkIng(d.g, d.g, d.brands, "same_drug", "", "", null));
+      return { drug, recognized: false, partial: true, drugClass: "", caution: "", source: "builtin", ings };
+    }
+    add(mkIng(drug, drug, [], "same_drug", "", "", null, true));
+    return { drug, recognized: false, drugClass: "", caution: "", source: "builtin", ings };
+  }
+  H.forEach(h => add(ingFromMember(h.m, "same_drug", h.c)));
+  const hitClasses = [...new Set(H.map(h => h.c))];
+  hitClasses.forEach(c => c.members.forEach(m => add(ingFromMember(m, "same_class", c))));
+  const uses = new Set(hitClasses.flatMap(c => c.uses));
+  let n = 0;
+  CLASSES.filter(c => !hitClasses.includes(c) && c.uses.some(u => uses.has(u)))
+    .forEach(c => c.members.forEach(m => { if (n < 16 && add(ingFromMember(m, "same_use", c))) n++; }));
+  return { drug, recognized: true, drugClass: hitClasses.map(c => c.name).join(" / "), caution: hitClasses.map(c => c.note).find(Boolean) || "", source: "builtin", ings };
+}
+function planFromClaude(drug, res) {
+  if (!res || typeof res !== "object" || res.recognized === false || !Array.isArray(res.alternatives)) return null;
+  const ings = []; const seen = new Set();
+  for (const a of res.alternatives.slice(0, 24)) {
+    if (!a || typeof a.generic !== "string" || !a.generic.trim()) continue;
+    const g = a.generic.trim().toLowerCase().slice(0, 80);
+    const k = normWords(g); if (!k || seen.has(k)) continue; seen.add(k);
+    const rel = ["same_drug", "same_class", "same_use"].includes(a.relation) ? a.relation : "same_use";
+    const brands = Array.isArray(a.brands) ? a.brands.filter(b => typeof b === "string" && b.trim()).map(b => b.trim().slice(0, 60)).slice(0, 12) : [];
+    ings.push(mkIng(g, g, brands, rel, typeof a.drugClass === "string" ? a.drugClass.slice(0, 80) : "", typeof a.note === "string" ? a.note.slice(0, 180) : "", null));
+  }
+  if (!ings.length) return null;
+  if (!ings.some(i => i.rel === "same_drug")) ings[0].rel = "same_drug";
+  const str = v => typeof v === "string" ? v.slice(0, 300) : "";
+  return { drug, recognized: true, drugClass: str(res.drugClass), caution: str(res.caution), source: "claude", ings };
+}
+function addExtras(plan, extras) {
+  const have = new Set(plan.ings.map(i => normWords(i.g)));
+  for (const x of extras) {
+    const H = builtInHits(x, "");
+    if (H.length && H[0].len > 1) {
+      const k = normWords(H[0].m.g); if (have.has(k)) continue; have.add(k);
+      plan.ings.push(ingFromMember(H[0].m, "extra", H[0].c));
+    } else {
+      const k = normWords(x); if (!k || have.has(k)) continue; have.add(k);
+      plan.ings.push(mkIng(x, x, [], "extra", "", "", null, true));
+    }
+  }
+}
+function finishPlan(plan) {
+  const q = " " + normWords(plan.drug) + " ";
+  let n = 0, cur = null, curLen = 0;
+  for (const ing of plan.ings) for (const p of ing.products) {
+    p.id = "p" + (++n); p.hits = []; p.sum = null; p.claude = null; p.isCurrent = false;
+    if (ing.rel !== "same_drug") continue;
+    const nm = normWords(p.name);
+    if (nm.length >= 3 && q.includes(" " + nm + " ") && nm.length > curLen) { cur = p; curLen = nm.length; }
+  }
+  if (!cur) { const sd = plan.ings.find(i => i.rel === "same_drug"); if (sd) cur = sd.products[0]; }
+  if (cur) cur.isCurrent = true;
+  plan.ings.forEach(i => i.products.sort((a, b) => (b.isCurrent - a.isCurrent)));
+}
+
+/* ---------- Searching the list ---------- */
+function searchProduct(prod, list) {
+  const hits = []; const seen = new Set();
+  for (const term of prod.terms) {
+    if (term.fallback && hits.length) break;
+    const m = makeMatcher(term.text, term.generic); if (!m) continue;
+    const key = keyOf(term.text);
+    const L = list.lines;
+    for (let li = 0; li < L.length && hits.length < 30; li++) {
+      const line = L[li];
+      if (seen.has(li) || (key && !line.all.includes(key))) continue;
+      for (let si = 0; si < line.lc.length; si++) {
+        const x = findIn(line.lc[si], m);
+        if (!x) continue;
+        const segs = [line.segs[si]];
+        for (let j = si + 1; j < line.segs.length; j++) { if (looksLikeName(line.segs[j])) break; segs.push(line.segs[j]); }
+        const text = segs.join("   ");
+        if (prod.exRe && prod.exRe.test(text)) break;
+        seen.add(li);
+        hits.push(Object.assign({ p: line.p, text, at: x.index, len: x[0].length }, parseCoverage(text)));
+        break;
+      }
+    }
+  }
+  return hits;
+}
+function summarize(hits) {
+  if (!hits.length) return { status: "notfound" };
+  const rows = hits.filter(h => !h.index);
+  if (!rows.length) return { status: "listed", page: hits[0].p };
+  const ok = rows.filter(h => !h.excluded);
+  if (!ok.length) return { status: "excluded" };
+  const restr = h => ("PA" in h.flags || "ST" in h.flags) ? 1 : 0;
+  ok.sort((a, b) => restr(a) - restr(b) || (a.tier ?? 9) - (b.tier ?? 9));
+  const best = ok[0];
+  return { status: restr(best) ? "conditions" : "covered", tier: best.tier, flags: best.flags };
+}
+async function runSearch(plan, list) {
+  let n = 0;
+  for (const ing of plan.ings) for (const p of ing.products) {
+    p.hits = searchProduct(p, list);
+    p.sum = summarize(p.hits);
+    if (++n % 6 === 0) await tick();
+  }
+}
+
+/* ---------- Coverage as shown ---------- */
+const SR = { covered: 0, conditions: 1, unclear: 2, listed: 2, excluded: 3, notfound: 4, unchecked: 5 };
+const numOf = s => { const m = String(s || "").match(/\b([1-7])\b/); return m ? +m[1] : null; };
+function codesFrom(t) {
+  const out = [];
+  if (/prior\s*auth|\bPA\b/i.test(t)) out.push("PA");
+  if (/step\s*therap|\bST\b/.test(t)) out.push("ST");
+  if (/quantity|\bQL\b/i.test(t)) out.push("QL");
+  if (/specialty|\bSP\b/.test(t)) out.push("SP");
+  return out;
+}
+function eff(p) {
+  if (!state.plan || !state.plan.checked) return { status: "unchecked", codes: [], conds: [] };
+  if (p.claude && p.hits.length) {
+    const c = p.claude;
+    const status = { covered: "covered", covered_with_conditions: "conditions", not_covered: "excluded", not_found: "notfound", unclear: "unclear" }[c.status] || "unclear";
+    return { status, tierLabel: c.tier, tierNum: numOf(c.tier), codes: codesFrom(c.conditions.join(" ; ")), conds: c.conditions.map(t => ({ text: t })), by: "claude" };
+  }
+  const s = p.sum || { status: "notfound" };
+  const f = s.flags || {};
+  const codes = Object.keys(f);
+  return { status: s.status, tierLabel: s.tier ? "Tier " + s.tier : "", tierNum: s.tier ?? null, codes, conds: codes.map(k => ({ code: k, text: FLAG_NAMES[k] + (f[k] ? ": " + f[k] : "") })), by: "text", page: s.page };
+}
+function statusText(e) {
+  return { covered: "Covered", conditions: "Covered with conditions", unclear: "Unclear", listed: "Listed in index" + (e.page ? ", p. " + e.page : ""), excluded: "Not covered", notfound: state.list && state.list.medicare ? "Not on plan's list" : "Not found", unchecked: "" }[e.status] || "";
+}
+function capsule(e) {
+  if (!["covered", "conditions", "unclear", "listed"].includes(e.status)) return "";
+  const left = e.tierNum ? "Tier " + e.tierNum : (e.tierLabel ? e.tierLabel.slice(0, 14) : "Tier ?");
+  const right = e.codes.length ? e.codes.join("·") : "–";
+  return `<span class="cap" title="${esc((e.tierLabel || "Tier not shown") + (e.codes.length ? "; " + e.codes.map(c => FLAG_NAMES[c]).join(", ") : "; no PA, ST or QL codes found"))}"><b>${esc(left)}</b><i>${esc(right)}</i></span>`;
+}
+function relDesc(ing, p) {
+  const r = { same_drug: "same medicine", same_class: "same class", same_use: "different class", extra: "you added" }[ing.rel];
+  if (p.kind === "brand") return `brand of ${ing.g} · ${r}`;
+  if (p.kind === "generic") return `generic · ${r}`;
+  return r;
+}
+
+/* ---------- State ---------- */
+const state = { list: sampleList(), plan: null, read: null, note: "", busy: false };
+let sample = null;
+let ctl = null;
+
+function allProducts(plan) { const out = []; plan.ings.forEach(i => i.products.forEach(p => out.push({ p, i }))); return out; }
+function currentOf(plan) { return allProducts(plan).find(x => x.p.isCurrent) || null; }
+const RELR = { same_drug: 0, same_class: 1, extra: 1, same_use: 2 };
+function picks(plan) {
+  const all = allProducts(plan).filter(x => !x.p.isCurrent);
+  if (!plan.checked) {
+    // Closest substitutes: other versions of the same medicine, then same class (generic names first)
+    const seen = new Set(); const out = [];
+    for (const x of all.sort((a, b) => RELR[a.i.rel] - RELR[b.i.rel])) {
+      if (x.i.rel === "same_use") continue;
+      if (x.i.rel !== "same_drug" && seen.has(x.i)) continue;
+      seen.add(x.i); out.push(x);
+      if (out.length >= 4) break;
+    }
+    return out;
+  }
+  const ranked = all.map(x => Object.assign(x, { e: eff(x.p) })).filter(x => x.e.status === "covered" || x.e.status === "conditions");
+  if (state.read && state.read.best.length) {
+    const chosen = state.read.best.map(id => ranked.find(x => x.p.id === id)).filter(Boolean);
+    if (chosen.length) return chosen;
+  }
+  return ranked.sort((a, b) => SR[a.e.status] - SR[b.e.status] || RELR[a.i.rel] - RELR[b.i.rel] || (a.e.tierNum ?? 9) - (b.e.tierNum ?? 9) || (a.p.kind === "brand") - (b.p.kind === "brand")).slice(0, 3);
+}
+
+/* ---------- Rendering ---------- */
+const fmtG = g => esc(g).replace(/\//g, '<span class="sl">/</span>');
+function hl(h) {
+  const t = h.text.length > 240 ? h.text.slice(0, 240) + "…" : h.text;
+  if (h.at >= t.length) return esc(t);
+  return esc(t.slice(0, h.at)) + "<mark>" + esc(t.slice(h.at, h.at + h.len)) + "</mark>" + esc(t.slice(h.at + h.len));
+}
+function linesHTML(hits, max) {
+  if (!hits.length) return "";
+  return `<div class="lines">${hits.slice(0, max).map(h => `<div class="ln"><span class="pg">${h.p ? "p." + esc(h.p) : "·"}</span><code>${hl(h)}</code></div>`).join("")}${hits.length > max ? `<div class="more">+${hits.length - max} more line${hits.length - max === 1 ? "" : "s"}</div>` : ""}</div>`;
+}
+function prodHTML(p, ing) {
+  const e = eff(p);
+  const head = `<span class="pn"><span class="nm">${esc(p.name)}</span><span class="kd">${esc(p.kind)}</span>${p.isCurrent ? '<span class="you">You take this</span>' : ""}</span>`;
+  if (e.status === "unchecked") return `<div class="prod static" data-st="unchecked"><div class="psum">${head}</div></div>`;
+  let body = "";
+  if (e.conds.length) body += `<ul class="conds">${e.conds.map(c => `<li>${c.code ? `<b>${esc(c.code)}</b>` : ""}${esc(c.text)}</li>`).join("")}</ul>`;
+  if (e.by === "claude") body += `<p class="by">Read by Claude from the lines below${e.tierLabel ? ". Tier: " + esc(e.tierLabel) : ""}.</p>`;
+  else if (e.tierLabel && e.status !== "excluded") body += `<p class="by">Tier read from the line text. Check it against the line below.</p>`;
+  body += p.hits.length ? linesHTML(p.hits, 4) : (state.list && state.list.medicare
+    ? `<p class="none">This plan's Medicare drug list doesn't include ${esc(p.name)}, so the plan won't pay for it unless your prescriber gets an exception approved. A covered generic or another version above is usually the easier route.</p>`
+    : `<p class="none">No line in this list mentions “${esc(p.name)}”. It may be listed under another name, or not covered. Try Search the drug list below to check.</p>`);
+  return `<details class="prod" data-st="${e.status}"><summary>${head}<span class="pst"><span class="st">${esc(statusText(e))}</span>${capsule(e)}</span></summary><div class="pbody">${body}</div></details>`;
+}
+function ingHTML(ing) {
+  const showCls = ing.cls && (ing.rel === "same_use" || ing.rel === "extra");
+  return `<article class="ing"><header class="ing-h"><h4>${fmtG(ing.g)}</h4>${showCls ? `<span class="cls">${esc(ing.cls)}</span>` : ""}</header>${ing.note ? `<p class="ing-note">${esc(ing.note)}</p>` : ""}<div class="prods">${ing.products.map(p => prodHTML(p, ing)).join("")}</div></article>`;
+}
+const GROUPS = [
+  ["same_drug", "Closest", "Same medicine", "Other versions of what you take: the generic, other brands, biosimilars. Same active ingredient, so usually the simplest switch."],
+  ["same_class", "Close", "Same drug class", "Different medicines that work the same way. A switch needs a new prescription and sometimes a dose adjustment."],
+  ["extra", "", "Names you added", ""],
+  ["same_use", "Further", "Same condition, different class", "These work differently, so they're not a direct swap. Worth asking about if nothing above fits."]
+];
+function groupHTML(plan, key, close, title, sub) {
+  const ings = plan.ings.filter(i => i.rel === key);
+  if (!ings.length) return "";
+  const t = `<h2 class="gt">${close ? `<span class="close">${close}</span>` : ""}${esc(title)}</h2>${sub ? `<p class="gs">${esc(sub)}</p>` : ""}`;
+  if (key === "same_use") {
+    let extra = "";
+    if (plan.checked) {
+      const n = ings.reduce((a, i) => a + i.products.filter(p => ["covered", "conditions"].includes(eff(p).status)).length, 0);
+      extra = `<p class="gs"><b>${n}</b> of ${ings.reduce((a, i) => a + i.products.length, 0)} products found on your list. Tap to show.</p>`;
+    } else extra = `<p class="gs">${ings.length} medicines. Tap to show.</p>`;
+    return `<details class="grp"><summary>${t}${extra}</summary><div class="ings">${ings.map(ingHTML).join("")}</div></details>`;
+  }
+  return `<section class="grp"><div class="grp-h">${t}</div><div class="ings">${ings.map(ingHTML).join("")}</div></section>`;
+}
+function noteText(plan) {
+  const cur = currentOf(plan);
+  const list = state.list;
+  const curName = cur ? cur.p.name : plan.drug;
+  const bets = picks(plan);
+  const L = ["Hi Dr. ___,", ""];
+  if (plan.checked && cur) {
+    const e = eff(cur.p);
+    const cond = e.conds.map(c => c.text.toLowerCase()).join(", ");
+    const where = `my plan's drug list (${list.name})`;
+    if (e.status === "covered") L.push(`I take ${curName}. ${where[0].toUpperCase() + where.slice(1)} covers it${e.tierLabel ? " at " + e.tierLabel : ""}, but I'm hoping for a lower-cost option.`);
+    else if (e.status === "conditions") L.push(`I take ${curName}. According to ${where}, it's only covered with ${cond || "extra approval"}${e.tierLabel ? " (" + e.tierLabel + ")" : ""}.`);
+    else if (e.status === "excluded") L.push(`I take ${curName}, and ${where} says it isn't covered.`);
+    else L.push(`I take ${curName}, and I can't find it on ${where}.`);
+    L.push("");
+    if (bets.length) {
+      L.push("These options look better covered:");
+      bets.forEach(x => { const e2 = eff(x.p); const c = e2.conds.map(c => c.text.toLowerCase()).join(", "); L.push(`- ${x.p.name}${x.p.kind === "brand" ? " (" + x.i.g + ")" : ""}: ${e2.tierLabel || "on the list"}${c ? ", " + c : ""}`); });
+      L.push("", `Would one of these work for me? If none fit, could you request a formulary exception or prior authorization for ${curName}?`);
+    } else {
+      L.push(`I couldn't find a well-covered substitute on the list. Could you request a formulary exception or prior authorization for ${curName}, or suggest an alternative?`);
+    }
+  } else {
+    L.push(`I take ${curName} and I'm looking for a substitute my insurance covers better. Some close options I found:`);
+    bets.forEach(x => L.push(`- ${x.p.name}${x.p.kind === "brand" ? " (" + x.i.g + ")" : ""}`));
+    L.push("", "Would any of these work for me? I'll check which ones my plan covers.");
+  }
+  L.push("", "Thank you,");
+  return L.join("\n");
+}
+function render() {
+  const R = $("#readout");
+  const plan = state.plan;
+  if (!plan) {
+    const d = $("#drug").value.trim();
+    R.innerHTML = `<div class="ready"><h2 class="gt">Ready</h2><p>${state.list ? `Drug list loaded: ${esc(state.list.name)}. ` : ""}Press Find substitutes to look up ${d ? esc(d) : "your medication"}${state.list ? " and check every substitute against the list" : ""}.</p></div>`;
+    $("#go").textContent = state.list ? "Find substitutes & check coverage" : "Find substitutes";
+    return;
+  }
+  const list = state.list;
+  const cur = currentOf(plan);
+  const bets = picks(plan);
+  let h = `<div class="rhead"><p class="kicker">${plan.example ? "Example · fictional plan" : plan.checked ? "Substitutes and coverage" : "Substitutes"}</p><h2>${esc(cur ? cur.p.name : plan.drug)}</h2><p class="meta">${plan.drugClass ? esc(plan.drugClass) + " · " : ""}${plan.source === "claude" ? "Substitutes from Claude" : "Substitutes from the built-in drug classes"}${plan.checked ? " · checked against " + esc(list.name) : ""}</p></div>`;
+  if (plan.example) h += `<p class="example">This example uses a made-up drug list so you can see how it reads. Type your medication, and upload your plan's list to check real coverage.</p>`;
+  if (plan.partial) h += `<p class="notice">${esc(plan.drug)} isn't in the built-in drug classes, so this shows other versions of the same medicine but not similar drugs.${!sample && !$("#keybox").hidden ? " Add an Anthropic API key in the form to get similar drugs too." : ""}</p>`;
+  else if (!plan.recognized) h += `<p class="notice">${plan.dym ? `Did you mean <button type="button" class="dym" data-dym="${esc(plan.dym)}">${esc(plan.dym)}</button>? ` : ""}${esc(plan.drug)} isn't in the built-in drug classes${sample && !$("#claudeopt").hidden ? ", and Claude was off or didn't recognize it" : ""}. ${plan.checked ? "Only the name itself was searched. " : ""}Check the spelling, or add names under Also check.${!sample && !$("#keybox").hidden ? " To look up any medication, add an Anthropic API key in the form." : ""}</p>`;
+  if (state.note) h += `<p class="notice">${esc(state.note)}</p>`;
+
+  if (plan.recognized || plan.partial || plan.checked) {
+    if (plan.checked) {
+      const e = cur ? eff(cur.p) : null;
+      const curBlock = cur ? `<div class="sum-cur"><h3>Your medication on this list</h3><div class="cur-row" data-st="${e.status}"><span class="cur-nm">${esc(cur.p.name)}</span><span class="st">${esc(statusText(e))}</span>${capsule(e)}</div>${e.conds.length ? `<p class="cur-conds">${e.conds.map(c => esc(c.text)).join(" · ")}</p>` : ""}${e.status === "notfound" ? `<p class="cur-conds">${state.list && state.list.medicare ? "This plan's drug list doesn't include it, so the plan won't pay for it without an approved exception. Check the other versions below." : "Not on this list under that name. It may be listed under its generic name, or not covered."}</p>` : ""}</div>` : "";
+      const betBlock = `<div><h3>Best covered substitutes</h3>${bets.length ? `<ol class="bets">${bets.map(x => { const e2 = eff(x.p); return `<li data-st="${e2.status}"><span class="bn">${esc(x.p.name)}</span><span class="capw">${capsule(e2)}</span><span class="bm">${esc(relDesc(x.i, x.p))}</span></li>`; }).join("")}</ol>` : `<p class="cur-conds">None of the substitutes turned up as covered on this list. Try Search the drug list below, or see the tips on exceptions.</p>`}</div>`;
+      h += `<section class="sum two">${curBlock}${betBlock}</section>`;
+    } else if (bets.length) {
+      h += `<section class="sum"><div><h3>Closest substitutes</h3><ol class="bets">${bets.map(x => `<li><span class="bn">${esc(x.p.name)}</span><span class="capw"></span><span class="bm">${esc(relDesc(x.i, x.p))}</span></li>`).join("")}</ol>${state.list ? "" : `<p class="cur-conds">Upload your plan's drug list to see which of these it covers.</p>`}</div></section>`;
+    }
+  }
+  if (state.read && state.read.summary) h += `<section class="read"><span class="who">Claude's read of your list</span><p>${esc(state.read.summary)}</p></section>`;
+  if (plan.caution) h += `<p class="caution"><b>Before switching:</b> ${esc(plan.caution)}</p>`;
+  GROUPS.forEach(([k, c, t, s]) => { h += groupHTML(plan, k, c, t, s); });
+  if (plan.recognized || plan.partial || plan.checked) h += `<section class="note"><h2 class="gt">Note for your prescriber</h2><p class="gs">Edit it, then paste into your patient portal or bring it to your appointment.</p><textarea id="notetext" rows="10">${esc(noteText(plan))}</textarea><div class="row"><button type="button" class="btn-sm" id="copynote">Copy note</button><span class="hint" id="copied" aria-live="polite"></span></div></section>`;
+  R.innerHTML = h;
+  $("#go").textContent = state.list ? "Find substitutes & check coverage" : "Find substitutes";
+}
+function renderList() {
+  const L = state.list;
+  $("#listinfo").innerHTML = L
+    ? `<div class="li-name">${L.example ? '<span class="tag">Example</span>' : L.medicare ? '<span class="tag">Medicare ' + esc(L.medicare.year) + '</span>' : ""}<span>${esc(L.name)}</span></div><div class="li-meta">${L.medicare ? `${esc(L.medicare.id)} · ${L.lines.length.toLocaleString()} drugs · CMS data ${esc(fmtRelease(L.medicare.release))}` : `${L.pages} page${L.pages === 1 ? "" : "s"} · ${L.lines.length.toLocaleString()} lines of text`}</div>`
+    : `<p class="li-empty">No list loaded. You'll still get substitutes; add a list to check coverage.</p>`;
+  $("#clearlist").hidden = !L;
+}
+
+/* ---------- Status ---------- */
+function setStatus(msg, o = {}) {
+  const s = $("#status");
+  if (!msg) { s.innerHTML = ""; return; }
+  s.innerHTML = `${o.spin ? '<span class="spin" aria-hidden="true"></span>' : ""}<span>${esc(msg)}</span>${o.stop ? '<button type="button" class="stop" id="stop">Stop</button>' : ""}`;
+  if (o.stop) $("#stop").onclick = () => { if (ctl) ctl.abort(); };
+}
+const claudeUsable = () => !!sample && !$("#claudeopt").hidden && $("#claudeOn").checked;
+function claudeErr(e, stage) {
+  const code = e && e.code;
+  if (code === "cancelled") return stage === "alt" ? "Stopped. Used the built-in drug classes instead." : "Stopped. Showing what the text search found.";
+  if (["not_granted", "sampling_disabled", "not_declared", "capability_disabled", "capability_removed"].includes(code)) {
+    $("#claudeopt").hidden = true;
+    return "Claude isn't available here, so this used the built-in drug classes and a plain text search.";
+  }
+  const fallback = stage === "alt" ? " Used the built-in drug classes instead." : " Showing the text search results.";
+  if (code === "bad_key") return "Anthropic didn't accept your API key. Remove it and add a new one." + fallback;
+  if (code === "no_credit") return "Your Anthropic API account is out of credit. Add credit in the Claude Console and try again." + fallback;
+  if (code === "rate_limited") return "Claude is at a usage limit right now." + fallback;
+  if (code === "session_expired") return "Your Claude session expired. Sign in again to use Claude." + fallback;
+  if (code === "invalid_json") return "Claude's answer didn't come back in a usable form." + fallback;
+  return (e && e.message ? "Claude returned an error: " + String(e.message).slice(0, 160) + "." : "Couldn't reach Claude this time.") + fallback;
+}
+
+/* ---------- Claude prompts ---------- */
+function promptA(drug, use) {
+  return `You help a patient find close substitutes for a prescription medication so they can discuss options with their prescriber and check which ones their US health plan covers. They will search their plan's drug list (formulary) for every name you give, so use the names US formularies use.
+
+Medication they take: ${JSON.stringify(drug)}
+What it's for (from the patient, may be blank): ${JSON.stringify(use || "")}
+
+Reply with ONLY a JSON object shaped like this example:
+{"recognized": true, "drugClass": "Inhaled steroid + long-acting bronchodilator (ICS/LABA)", "caution": "Inhalers differ in device and technique, so a switch needs a new prescription.",
+ "alternatives": [
+  {"generic": "budesonide/formoterol", "brands": ["Symbicort", "Breyna"], "relation": "same_drug", "drugClass": "ICS/LABA", "note": "Same ingredients; Breyna is the generic-equivalent version."},
+  {"generic": "fluticasone/salmeterol", "brands": ["Advair Diskus", "Wixela Inhub"], "relation": "same_class", "drugClass": "ICS/LABA", "note": "Powder inhaler, two puffs a day instead of an aerosol."}
+ ]}
+
+Rules:
+- First entry: the medication itself, relation "same_drug", with its US generic name and every currently marketed US brand name, branded generic, or biosimilar of that same active ingredient. Add another "same_drug" entry only for a different salt or release form of the same ingredient that is sold separately.
+- Then up to 8 entries with relation "same_class": the closest substitutes, meaning other drugs in the same class used for the same purpose. Order them from most to least similar (mechanism, dosing, side effects, how often prescribers switch between them).
+- Then up to 6 entries with relation "same_use": drugs from other classes commonly used for the same condition that a prescriber might reasonably consider.
+- generic: lowercase US generic name without the salt (keep the salt only when products differ by it, e.g. "metoprolol succinate"); join combination ingredients with "/".
+- brands: currently marketed US brand names; [] if none.
+- drugClass: short class name for that entry.
+- note: at most 16 words, plain English, about how it differs from what they take now (form, dosing frequency, monitoring, side effects). Never give doses.
+- caution: one short sentence about switching risks for this medication, or "".
+- If the medication has several uses, use "what it's for" to choose; if it's still unclear, pick the most common use and mention that in caution.
+- If you don't recognize the medication, reply {"recognized": false, "alternatives": []}.`;
+}
+function legendText(list) {
+  if (list.legend) return list.legend;
+  const pages = [...new Set(list.lines.map(l => l.p))].slice(0, 8);
+  const re = /tier|prior auth|step therap|quantity limit|\bPA\b|\bST\b|\bQL\b|\bSP\b|specialty|preferred|non-?formulary|excluded|\bNF\b/i;
+  const out = [];
+  for (const l of list.lines) {
+    if (!pages.includes(l.p)) continue;
+    const t = l.segs.join("   ");
+    if (re.test(t) && t.length < 260) out.push(t);
+    if (out.length >= 50) break;
+  }
+  return out.join("\n").slice(0, 3500);
+}
+function promptB(plan, list) {
+  const rows = []; let curId = "";
+  const rel = { same_drug: "same medicine", same_class: "same class", same_use: "different class, same condition", extra: "added by the patient" };
+  for (const ing of plan.ings) for (const p of ing.products) {
+    if (p.isCurrent) curId = p.id;
+    rows.push(`[${p.id}] ${p.name} (${p.kind}${p.kind === "brand" ? " of " + ing.g : ""}; ${rel[ing.rel]})`);
+    if (!p.hits.length) rows.push("  (no lines found)");
+    else p.hits.slice(0, 4).forEach(h => rows.push(`  p.${h.p}: ${h.text.slice(0, 200)}`));
+  }
+  return `A patient searched their health plan's drug list (formulary) for their current medication and possible substitutes. ${list.medicare ? "The list comes from Medicare's public plan data: one line per drug product with its tier and codes." : "The list was extracted from a PDF as plain text, so table columns may run together."} For each product below you get the lines the search found.
+
+Lines from the front of the document that may explain tiers and codes:
+<<<
+${legendText(list) || "(none found)"}
+>>>
+
+Products (the patient currently takes ${curId || "the first product"}):
+${rows.join("\n")}
+
+Reply with ONLY a JSON object like:
+{"products": [{"id": "p1", "status": "covered", "tier": "Tier 2 · Generic", "conditions": ["Quantity limit: 10.2 g per 30 days"]}], "best": ["p3", "p1"], "summary": "..."}
+
+Rules:
+- Include every product id listed above.
+- status: "covered" (listed, no prior authorization or step therapy), "covered_with_conditions" (listed but needs prior authorization, step therapy, or similar approval), "not_covered" (the list says excluded or not covered), "not_found" (no lines found), or "unclear" (lines found but you can't tell, or they look like a different product, form, or use, such as a nasal spray when the product is an inhaler).
+- tier: the tier as the plan names it, short, decoded with the legend where possible (e.g. "Tier 1 · Preferred generic"); "" if unknown.
+- conditions: short plain-English items, e.g. "Prior authorization", "Step therapy", "Quantity limit: 60 per 30 days", "Specialty pharmacy"; [] if none.
+- Base everything only on the lines given.
+- best: up to 3 product ids, not the current one, that look easiest and cheapest to get covered while staying as close as possible to what the patient takes. Best first.
+- summary: 2 to 3 plain sentences for the patient: how their current medication is covered, which substitutes look best and what the catches are, and a reminder to confirm with their prescriber or pharmacist. No doses.`;
+}
+function applyRead(plan, res) {
+  if (!res || !Array.isArray(res.products)) return false;
+  const byId = new Map(allProducts(plan).map(x => [x.p.id, x.p]));
+  for (const r of res.products) {
+    const p = r && byId.get(String(r.id));
+    if (!p) continue;
+    p.claude = { status: String(r.status || ""), tier: typeof r.tier === "string" ? r.tier.slice(0, 60) : "", conditions: Array.isArray(r.conditions) ? r.conditions.filter(x => typeof x === "string").map(x => x.slice(0, 90)).slice(0, 6) : [] };
+  }
+  state.read = { summary: typeof res.summary === "string" ? res.summary.slice(0, 900) : "", best: Array.isArray(res.best) ? res.best.map(String).filter(id => byId.has(id) && !byId.get(id).isCurrent).slice(0, 3) : [] };
+  return true;
+}
+
+/* ---------- Main action ---------- */
+const splitExtras = v => v.split(/[,\n;]+/).map(s => s.trim()).filter(s => s.length >= 3).slice(0, 10);
+async function check(opts = {}) {
+  if (state.busy) return;
+  const drug = $("#drug").value.trim();
+  if (!drug) { setStatus("Enter the medication you take."); $("#drug").focus(); return; }
+  state.busy = true; $("#go").disabled = true;
+  const use = $("#use").value.trim();
+  const extras = splitExtras($("#extra").value);
+  const list = state.list;
+  const useClaude = !opts.quiet && claudeUsable();
+  let plan = null; state.note = ""; state.read = null;
+  try {
+    if (useClaude) {
+      ctl = new AbortController();
+      setStatus("Asking Claude for close substitutes…", { spin: true, stop: true });
+      try {
+        const res = await sample.json(promptA(drug, use), { signal: ctl.signal, modelTier: "default" });
+        plan = planFromClaude(drug, res);
+        if (!plan) state.note = "Claude didn't recognize that name, so the built-in drug classes were used.";
+      } catch (e) { state.note = claudeErr(e, "alt"); }
+    }
+    if (!plan) { await medsReady(2000); plan = planFromBuiltIn(drug, use); }
+    if (!plan.recognized && !plan.partial) {
+      const best = suggest(drug, 1)[0];
+      if (best && normWords(best.e.n) !== normWords(drug)) plan.dym = best.e.n;
+    }
+    addExtras(plan, extras);
+    finishPlan(plan);
+    plan.example = !!(list && list.example);
+    plan.checked = !!list;
+    if (list) { setStatus("Searching the drug list…", { spin: true }); await runSearch(plan, list); }
+    state.plan = plan;
+    render();
+    if (list && useClaude && claudeUsable()) {
+      ctl = new AbortController();
+      setStatus("Claude is reading the coverage codes…", { spin: true, stop: true });
+      try {
+        const res = await sample.json(promptB(plan, list), { signal: ctl.signal, modelTier: "default" });
+        if (!applyRead(plan, res)) state.note = "Claude's answer didn't come back in a usable form. Showing the text search results.";
+      } catch (e) { state.note = claudeErr(e, "read"); }
+      render();
+    }
+    setStatus("");
+  } finally {
+    state.busy = false; $("#go").disabled = false; ctl = null;
+  }
+}
+
+/* ---------- Loading lists ---------- */
+function listErr(e) {
+  if (e && e.code === "lib") return "Couldn't load the PDF reader. Check your connection and try again.";
+  if (e && e.code === "empty") return "No searchable text in that file. If it's a scanned PDF, look for a text version on your plan's site, or paste the list as text.";
+  if (e && e.name === "PasswordException") return "That PDF is password-protected. Save an unlocked copy and upload that.";
+  return "Couldn't read that file. Try another copy of the list, or paste it as text.";
+}
+function afterListChange(msg) {
+  renderList();
+  state.plan = null; state.read = null; state.note = "";
+  render(); runLookup();
+  setStatus(msg || "");
+}
+async function loadFile(file) {
+  if (!file || state.busy) return;
+  state.busy = true; $("#go").disabled = true;
+  const isPdf = /pdf/i.test(file.type) || /\.pdf$/i.test(file.name);
+  try {
+    let res;
+    if (isPdf) {
+      setStatus("Loading the PDF reader…", { spin: true });
+      res = await readPdf(file, (p, n) => setStatus(`Reading page ${p} of ${n}…`, { spin: true }));
+    } else {
+      res = linesFromText(await file.text());
+    }
+    if (!res.lines.length) throw { code: "empty" };
+    state.list = { name: file.name.replace(/\.[a-z0-9]+$/i, "") || "Your drug list", pages: res.pages, lines: res.lines, example: false };
+    state.busy = false;
+    afterListChange(`Read ${res.lines.length.toLocaleString()} lines. Press the button to check coverage.`);
+  } catch (e) {
+    setStatus(listErr(e));
+  } finally {
+    state.busy = false; $("#go").disabled = false; $("#file").value = "";
+  }
+}
+
+/* ---------- Direct search ---------- */
+let lookT = null;
+function runLookup() {
+  const q = $("#q").value.trim();
+  const out = $("#qres");
+  if (!state.list) { out.innerHTML = q ? `<p class="none">Load a drug list first.</p>` : ""; return; }
+  if (q.length < 3) { out.innerHTML = ""; return; }
+  const m = makeMatcher(q, false);
+  if (!m) { out.innerHTML = ""; return; }
+  const key = keyOf(q);
+  const hits = [];
+  let total = 0;
+  for (const line of state.list.lines) {
+    if (key && !line.all.includes(key)) continue;
+    for (let si = 0; si < line.lc.length; si++) {
+      const x = findIn(line.lc[si], m);
+      if (!x) continue;
+      total++;
+      if (hits.length < 30) hits.push({ p: line.p, text: line.segs.slice(si).join("   "), at: x.index, len: x[0].length });
+      break;
+    }
+  }
+  out.innerHTML = hits.length
+    ? `<p class="gs">${total > hits.length ? `Showing ${hits.length} of ${total} lines` : `${total} line${total === 1 ? "" : "s"}`} in ${esc(state.list.name)}</p>${linesHTML(hits, 30)}`
+    : `<p class="none">No lines mention “${esc(q)}”.</p>`;
+}
+
+/* ---------- Wiring ---------- */
+$("#rxdate").textContent = new Date().toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+$("#f").addEventListener("submit", e => { e.preventDefault(); check(); });
+$("#pickfile").addEventListener("click", () => $("#file").click());
+$("#file").addEventListener("change", e => loadFile(e.target.files && e.target.files[0]));
+$("#pastebtn").addEventListener("click", () => { const b = $("#pastebox"); b.hidden = !b.hidden; if (!b.hidden) { $("#medibox").hidden = true; $("#medbtn").setAttribute("aria-expanded", "false"); $("#paste").focus(); } });
+$("#pasteuse").addEventListener("click", () => {
+  const res = linesFromText($("#paste").value);
+  if (!res.lines.length) { setStatus("Paste the drug list text first."); return; }
+  state.list = { name: "Pasted drug list", pages: res.pages, lines: res.lines, example: false };
+  $("#pastebox").hidden = true;
+  afterListChange(`Read ${res.lines.length.toLocaleString()} lines. Press the button to check coverage.`);
+});
+$("#clearlist").addEventListener("click", () => { if (state.busy) return; state.list = null; afterListChange("Drug list removed. You'll get substitutes without a coverage check."); });
+const drop = $("#drop");
+["dragenter", "dragover"].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.add("over"); }));
+["dragleave", "drop"].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.remove("over"); }));
+drop.addEventListener("drop", e => { const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]; if (f) loadFile(f); });
+$("#q").addEventListener("input", () => { clearTimeout(lookT); lookT = setTimeout(runLookup, 200); });
+$("#readout").addEventListener("click", e => {
+  if (e.target.id !== "copynote") return;
+  const ta = $("#notetext"); const done = $("#copied");
+  const fallback = () => { ta.focus(); ta.select(); done.textContent = "Selected. Copy it from your keyboard or menu."; };
+  try {
+    navigator.clipboard.writeText(ta.value).then(() => { done.textContent = "Copied"; }, fallback);
+  } catch (err) { fallback(); }
+});
+
+/* ---------- Medication names: built-in list plus data/drugs.json (NLM RxNorm) ---------- */
+const DATA = "data/";
+const MEDS = { list: [], seen: new Set(), byGeneric: new Map(), loading: null };
+function phon(s) {
+  return normWords(s).replace(/ /g, "").replace(/ph/g, "f").replace(/th/g, "t").replace(/ck/g, "k")
+    .replace(/c(?=[eiy])/g, "s").replace(/c/g, "k").replace(/qu/g, "kw").replace(/x/g, "ks").replace(/y/g, "i").replace(/z/g, "s")
+    .replace(/(.)\1+/g, "$1");
+}
+function addMed(name, generic, kind, common) {
+  const nl = normWords(name);
+  if (!nl || MEDS.seen.has(kind + "|" + nl)) return;
+  MEDS.seen.add(kind + "|" + nl);
+  const words = nl.split(" ");
+  MEDS.list.push({ n: name, g: generic, kind, common, nl, words, ph: phon(name), phw: words.length > 1 ? words.map(phon) : [] });
+  const gk = normWords(kind === "brand" ? generic : name);
+  if (!MEDS.byGeneric.has(gk)) MEDS.byGeneric.set(gk, { g: kind === "brand" ? generic : name, brands: [] });
+  if (kind === "brand") { const e = MEDS.byGeneric.get(gk); if (!e.brands.includes(name)) e.brands.push(name); }
+}
+CLASSES.forEach(c => c.members.forEach(m => { addMed(m.g, "", "generic", true); m.b.forEach(b => addMed(b, m.g, "brand", true)); }));
+function ensureMeds() {
+  if (MEDS.loading) return MEDS.loading;
+  MEDS.loading = (typeof fetch === "function" ? fetch(DATA + "drugs.json").then(r => r.ok ? r.json() : []) : Promise.resolve([]))
+    .then(rows => { if (Array.isArray(rows)) rows.forEach(([g, bs]) => { addMed(g, "", "generic", false); (bs || []).forEach(b => addMed(b, g, "brand", false)); }); })
+    .catch(() => {});
+  return MEDS.loading;
+}
+const medsReady = ms => Promise.race([ensureMeds(), new Promise(r => setTimeout(r, ms))]);
+function medLookup(text) {
+  const q = " " + normWords(text) + " ";
+  let best = null, len = 0;
+  for (const e of MEDS.list) if (e.nl.length >= 3 && e.nl.length > len && q.includes(" " + e.nl + " ")) { best = e; len = e.nl.length; }
+  if (!best) return null;
+  return MEDS.byGeneric.get(normWords(best.kind === "brand" ? best.g : best.n)) || null;
+}
+function prefixDist(a, b, max) {
+  const n = a.length, m = Math.min(b.length, n + max);
+  let pp = null, prev = new Array(m + 1);
+  for (let j = 0; j <= m; j++) prev[j] = j;
+  for (let i = 1; i <= n; i++) {
+    const cur = new Array(m + 1); cur[0] = i; let rowMin = i;
+    for (let j = 1; j <= m; j++) {
+      let v = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+      if (pp && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) v = Math.min(v, pp[j - 2] + 1);
+      cur[j] = v; if (v < rowMin) rowMin = v;
+    }
+    if (rowMin > max) return max + 1;
+    pp = prev; prev = cur;
+  }
+  let best = Infinity; for (let j = 0; j <= m; j++) best = Math.min(best, prev[j]);
+  return best;
+}
+function suggest(q, limit = 8) {
+  const nq = normWords(q);
+  if (nq.length < 2) return [];
+  const out = [];
+  for (const e of MEDS.list) {
+    let score = 0;
+    if (e.nl === nq) score = 1000;
+    else if (e.nl.startsWith(nq)) score = 900;
+    else if (e.words.some(w => w.startsWith(nq))) score = 800;
+    else if (nq.length >= 3 && e.nl.includes(nq)) score = 650;
+    if (score) out.push({ e, score: score + (e.common ? 40 : 0) - Math.min(e.n.length, 40) * 0.5, fuzzy: false });
+  }
+  if (out.length < limit) {
+    const pq = phon(q);
+    // Spelling-tolerant matches: looser for longer words, and only exact sound-alikes when something already starts with the text
+    const max = out.length ? 0 : pq.length <= 3 ? -1 : pq.length <= 7 ? 1 : pq.length <= 10 ? 2 : 3;
+    if (max >= 0 && pq.length >= 3) for (const e of MEDS.list) {
+      if (out.some(x => x.e === e)) continue;
+      let d = prefixDist(pq, e.ph, max);
+      for (const w of e.phw) { if (d <= 0) break; d = Math.min(d, prefixDist(pq, w, max)); }
+      if (d <= max) out.push({ e, score: 500 - d * 100 + (e.common ? 40 : 0) - Math.min(e.n.length, 40) * 0.5, fuzzy: true });
+    }
+  }
+  out.sort((a, b) => b.score - a.score);
+  const seen = new Set(), res = [];
+  for (const x of out) { const k = x.e.nl; if (seen.has(k)) continue; seen.add(k); res.push(x); if (res.length >= limit) break; }
+  return res;
+}
+function attachSuggest(input, list, multi) {
+  let items = [], active = -1, timer = null;
+  const term = () => multi ? input.value.split(",").pop().trim() : input.value.trim();
+  const close = () => { list.hidden = true; active = -1; input.setAttribute("aria-expanded", "false"); input.removeAttribute("aria-activedescendant"); };
+  const mark = () => {
+    list.querySelectorAll("li[data-i]").forEach((li, i) => li.setAttribute("aria-selected", i === active ? "true" : "false"));
+    if (active >= 0) { input.setAttribute("aria-activedescendant", list.id + "-" + active); const li = list.querySelector(`[data-i="${active}"]`); if (li && li.scrollIntoView) li.scrollIntoView({ block: "nearest" }); }
+  };
+  const show = () => {
+    const q = term();
+    items = normWords(q).length >= 2 ? suggest(q, 8) : [];
+    if (!items.length || (items.length === 1 && items[0].e.nl === normWords(q))) { close(); return; }
+    list.innerHTML = (items.every(x => x.fuzzy) ? '<li class="ah" role="presentation">Closest spellings</li>' : "")
+      + items.map((x, i) => `<li role="option" id="${list.id}-${i}" data-i="${i}" aria-selected="false"><span class="an">${esc(x.e.n)}</span><span class="ag">${x.e.kind === "brand" ? "brand of " + esc(x.e.g) : "generic"}</span></li>`).join("");
+    active = -1; list.hidden = false; input.setAttribute("aria-expanded", "true");
+  };
+  const choose = i => {
+    const x = items[i]; if (!x) return;
+    if (multi) { const parts = input.value.split(","); parts[parts.length - 1] = (parts.length > 1 ? " " : "") + x.e.n; input.value = parts.join(",") + ", "; }
+    else input.value = x.e.n;
+    close(); input.focus();
+  };
+  input.addEventListener("focus", ensureMeds);
+  input.addEventListener("input", () => { clearTimeout(timer); timer = setTimeout(() => ensureMeds().then(show), 60); });
+  input.addEventListener("keydown", e => {
+    if (list.hidden || !items.length) return;
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); active = (active + (e.key === "ArrowDown" ? 1 : items.length - 1)) % items.length; mark(); }
+    else if (e.key === "Enter" && active >= 0) { e.preventDefault(); choose(active); }
+    else if (e.key === "Escape") { e.preventDefault(); close(); }
+    else if (e.key === "Tab") close();
+  });
+  input.addEventListener("blur", () => setTimeout(close, 150));
+  list.addEventListener("mousedown", e => e.preventDefault());
+  list.addEventListener("click", e => { const li = e.target.closest && e.target.closest("li[data-i]"); if (li) choose(+li.dataset.i); });
+}
+attachSuggest($("#drug"), $("#drug-ac"), false);
+attachSuggest($("#extra"), $("#extra-ac"), true);
+$("#readout").addEventListener("click", e => {
+  const b = e.target.closest && e.target.closest(".dym");
+  if (!b) return;
+  $("#drug").value = b.dataset.dym;
+  check();
+});
+
+/* ---------- Medicare plans (data/index.json, data/<year>/plans.json, data/<year>/f/<id>.json) ---------- */
+const MED_LEGEND = "This drug list comes from Medicare's public plan data. Tier numbers are the plan's cost-sharing tiers. Most Medicare drug plans use five tiers: 1 preferred generic, 2 generic, 3 preferred brand, 4 non-preferred drug, 5 specialty; some plans add a sixth. PA = prior authorization required. ST = step therapy required. QL = quantity limit (amount per number of days).";
+const med = { index: null, years: {}, namesP: null };
+function fmtRelease(d) {
+  const m = String(d || "").match(/^(\d{4})(\d{2})(\d{2})$/);
+  return m ? new Date(+m[1], +m[2] - 1, +m[3]).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }) : String(d || "");
+}
+async function getData(path) {
+  const r = await fetch(DATA + path);
+  if (!r.ok) throw { code: r.status === 404 ? "missing" : "http" };
+  return r.json();
+}
+function medicareLines(form, names) {
+  const lines = [];
+  for (const row of form.d || []) {
+    const [rx, tier, flags, qa, qd] = row;
+    const segs = [names[rx] || "RxCUI " + rx];
+    if (tier) segs.push("Tier " + tier);
+    if (flags & 1) segs.push("PA");
+    if (flags & 2) segs.push("ST");
+    if (flags & 4) segs.push("QL" + (qa ? ` (${qa} per ${qd || "?"} days)` : ""));
+    lines.push(mkLine(0, segs));
+  }
+  return lines.sort((a, b) => a.all < b.all ? -1 : a.all > b.all ? 1 : 0);
+}
+async function openMedicare() {
+  const box = $("#medibox");
+  box.hidden = !box.hidden;
+  $("#medbtn").setAttribute("aria-expanded", String(!box.hidden));
+  if (box.hidden) return;
+  $("#pastebox").hidden = true;
+  if (!med.index) {
+    $("#mres").innerHTML = '<p class="hint">Loading Medicare plans…</p>';
+    try { med.index = await getData("index.json"); }
+    catch (e) {
+      $("#mres").innerHTML = `<p class="none">${e && e.code === "missing" ? "Medicare plan data hasn't been built yet. It shows up here after the site's data update finishes." : "Couldn't load Medicare plan data. Check your connection and try again."}</p>`;
+      return;
+    }
+    const years = (med.index.years || []).map(y => y.year);
+    if (!years.length) { $("#mres").innerHTML = '<p class="none">No Medicare plan data is available right now.</p>'; return; }
+    $("#myear").innerHTML = years.map(y => `<option value="${y}">${y} plan year</option>`).join("");
+    const cy = new Date().getFullYear();
+    $("#myear").value = String(years.includes(cy) ? cy : years[years.length - 1]);
+  }
+  await loadPlanYear(+$("#myear").value);
+  $("#mq").focus();
+}
+async function loadPlanYear(y) {
+  if (!med.years[y]) {
+    $("#mres").innerHTML = `<p class="hint">Loading ${y} plans…</p>`;
+    try {
+      const j = await getData(`${y}/plans.json`);
+      med.years[y] = j.plans.map(p => ({ c: p[0], p: p[1], s: p[2], n: p[3], o: p[4], f: p[5], st: p[6] ? p[6].split(",") : [], snp: p[7],
+        id: `${p[0]}-${p[1]}${p[2] && p[2] !== "000" ? "-" + p[2] : ""}`, hay: normWords(`${p[3]} ${p[4]} ${p[0]} ${p[0]}${p[1]}`) }));
+    } catch (e) { $("#mres").innerHTML = `<p class="none">Couldn't load the ${y} plans. Try again in a moment.</p>`; return; }
+  }
+  const keep = $("#mstate").value;
+  const states = [...new Set(med.years[y].flatMap(p => p.st))].sort();
+  $("#mstate").innerHTML = '<option value="">Any state</option>' + states.map(s => `<option value="${s}">${s}</option>`).join("");
+  if (states.includes(keep)) $("#mstate").value = keep;
+  searchPlans();
+}
+function searchPlans() {
+  const y = +$("#myear").value, all = med.years[y];
+  if (!all) return;
+  const q = $("#mq").value.trim(), st = $("#mstate").value;
+  let res = st ? all.filter(p => p.st.includes(st)) : all;
+  const idm = q.toUpperCase().replace(/\s+/g, "").match(/^([HSRE]\d{4})-?(\d{1,3})?(?:-?(\d{1,3}))?$/);
+  if (idm) res = res.filter(p => p.c === idm[1] && (!idm[2] || p.p === idm[2].padStart(3, "0")) && (!idm[3] || p.s === idm[3].padStart(3, "0")));
+  else if (q) { const toks = normWords(q).split(" ").filter(t => t.length >= 2); res = res.filter(p => toks.every(t => p.hay.includes(t))); }
+  else if (!st) { $("#mres").innerHTML = '<p class="hint">Type the plan ID from your member card (like S1234-001 or H1234-012) or part of the plan name. Picking a state narrows the list.</p>'; return; }
+  const shown = res.slice(0, 20);
+  $("#mres").innerHTML = (res.length
+      ? `<p class="hint">${res.length > shown.length ? `Showing ${shown.length} of ${res.length}. Type more of the name to narrow it down.` : `${res.length} plan${res.length === 1 ? "" : "s"}`}</p>`
+      : `<p class="none">No ${y} plans match. Check the ID, try fewer words, or change the state.</p>`)
+    + shown.map(p => `<button type="button" class="mplan" data-i="${all.indexOf(p)}"><span class="mp-n">${esc(p.n)}</span><span class="mp-m">${esc(p.id)} · ${esc(p.o)}${p.st.length ? " · " + esc(p.st.length > 4 ? p.st.length + " states" : p.st.join(", ")) : ""}${p.snp ? " · Special needs plan" : ""}</span></button>`).join("");
+}
+async function pickPlan(i) {
+  const y = +$("#myear").value, p = (med.years[y] || [])[i];
+  if (!p || state.busy) return;
+  state.busy = true; $("#go").disabled = true;
+  setStatus(`Loading the drug list for ${p.n}…`, { spin: true });
+  try {
+    med.namesP = med.namesP || getData("names.json");
+    const [form, names] = await Promise.all([getData(`${y}/f/${p.f}.json`), med.namesP]);
+    const lines = medicareLines(form, names);
+    const yi = (med.index.years || []).find(x => x.year === y) || {};
+    state.list = { name: p.n, pages: 0, lines, example: false, medicare: { year: y, id: p.id, release: yi.release || "" }, legend: MED_LEGEND };
+    $("#medibox").hidden = true; $("#medbtn").setAttribute("aria-expanded", "false");
+    state.busy = false;
+    afterListChange(`Loaded ${lines.length.toLocaleString()} drugs for ${p.n} (${p.id}). Press the button to check coverage.`);
+  } catch (e) {
+    med.namesP = null;
+    setStatus("Couldn't load that plan's drug list. Try again in a moment.");
+  } finally { state.busy = false; $("#go").disabled = false; }
+}
+$("#medbtn").addEventListener("click", openMedicare);
+$("#myear").addEventListener("change", () => loadPlanYear(+$("#myear").value));
+$("#mstate").addEventListener("change", searchPlans);
+let planT = null;
+$("#mq").addEventListener("input", () => { clearTimeout(planT); planT = setTimeout(searchPlans, 120); });
+$("#mres").addEventListener("click", e => { const b = e.target.closest && e.target.closest(".mplan"); if (b) pickPlan(+b.dataset.i); });
+if (window.__FF_TEST__) window.__ffTest = { state, check, suggest, medLookup, ensureMeds, openMedicare, loadPlanYear, searchPlans, pickPlan, render };
+
+renderList();
+check({ quiet: true });
+
+/* ---------- Claude with the viewer's own API key ---------- */
+const KEY_STORE = "formulary-finder.anthropic-key";
+const MODEL = "claude-sonnet-5-5";
+function getKey() { try { return localStorage.getItem(KEY_STORE) || ""; } catch (e) { return ""; } }
+function storeKey(k) { try { if (k) localStorage.setItem(KEY_STORE, k); else localStorage.removeItem(KEY_STORE); return true; } catch (e) { return false; } }
+function parseLooseJSON(t) {
+  try { return JSON.parse(t); } catch (e) {}
+  const f = t.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (f) { try { return JSON.parse(f[1]); } catch (e) {} }
+  const a = t.search(/[\[{]/), b = Math.max(t.lastIndexOf("}"), t.lastIndexOf("]"));
+  if (a >= 0 && b > a) { try { return JSON.parse(t.slice(a, b + 1)); } catch (e) {} }
+  throw { code: "invalid_json" };
+}
+async function callAnthropic(key, prompt, opts = {}) {
+  let res;
+  try {
+    res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      signal: opts.signal,
+      headers: { "content-type": "application/json", "x-api-key": key, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
+      body: JSON.stringify({ model: MODEL, max_tokens: opts.maxTokens || 8000, messages: [{ role: "user", content: prompt }] })
+    });
+  } catch (e) { throw { code: e && e.name === "AbortError" ? "cancelled" : "upstream_error" }; }
+  if (!res.ok) {
+    let msg = "";
+    try { const j = await res.json(); msg = (j && j.error && j.error.message) || ""; } catch (e) {}
+    const code = (res.status === 401 || res.status === 403) ? "bad_key"
+      : res.status === 429 ? "rate_limited"
+      : (res.status === 400 && /credit|billing|balance/i.test(msg)) ? "no_credit"
+      : "upstream_error";
+    throw { code, message: msg };
+  }
+  const data = await res.json();
+  const text = (data.content || []).filter(b => b.type === "text").map(b => b.text).join("");
+  if (!text.trim()) throw { code: "empty_completion" };
+  return text;
+}
+function keySampler(key) {
+  const f = async (p, o) => ({ text: await callAnthropic(key, p, o), truncated: false });
+  f.json = async (p, o) => parseLooseJSON(await callAnthropic(key, p, o));
+  return f;
+}
+function applyKey(k) {
+  if (k) {
+    sample = keySampler(k);
+    $("#claudelabel").textContent = "Use Claude (your API key) to find substitutes and read the plan's codes";
+    $("#claudehint").textContent = "Covers any medication. Sends the medication name and the matching lines to Anthropic with your key; the rest of your drug list stays in this browser.";
+    $("#claudeopt").hidden = false; $("#keyrow").hidden = false; $("#keybox").hidden = true;
+  } else {
+    sample = null;
+    $("#claudeopt").hidden = true; $("#keyrow").hidden = true; $("#keybox").hidden = false;
+  }
+}
+$("#savekey").addEventListener("click", async () => {
+  const k = $("#apikey").value.trim();
+  const msg = $("#keymsg");
+  if (!k) { msg.textContent = "Paste your key first."; return; }
+  const btn = $("#savekey"); btn.disabled = true; msg.textContent = "Testing the key…";
+  try {
+    await callAnthropic(k, "Reply with OK.", { maxTokens: 5 });
+    const kept = storeKey(k);
+    $("#apikey").value = "";
+    applyKey(k);
+    $("#claudeOn").checked = true;
+    setStatus(kept ? "Key saved in this browser. Claude will be used on your next check." : "Key works, but this browser won't let the page save it, so you'll need to add it again next visit.");
+  } catch (e) {
+    msg.textContent = e.code === "bad_key" ? "Anthropic didn't accept that key. Check that you copied all of it."
+      : e.code === "no_credit" ? "The key works, but the account has no API credit yet."
+      : e.code === "rate_limited" ? "The key hit a rate limit. Try again in a minute."
+      : e.message ? "Error from Anthropic: " + String(e.message).slice(0, 140)
+      : "Couldn't reach Anthropic. Check your connection and try again.";
+  } finally { btn.disabled = false; }
+});
+$("#forgetkey").addEventListener("click", () => { storeKey(""); applyKey(""); setStatus("API key removed from this browser."); });
+
+(async () => {
+  let s = null;
+  try { s = window.claude && typeof window.claude.use === "function" ? await window.claude.use("sample") : null; }
+  catch (e) { s = null; }
+  if (s) { sample = s; $("#claudeopt").hidden = false; return; }
+  applyKey(getKey());
+})();
+})();
+</script>
+
+</body>
+</html>
