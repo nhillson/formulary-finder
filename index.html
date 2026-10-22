@@ -552,7 +552,8 @@ function variantInfo(products) {
   const strengths = doseMode ? [...new Set(nums.map(n => n.n))].sort((a, b) => a - b) : [];
   return { doseMode, unit, strengths };
 }
-function doseCombos(strengths, dose, maxPills = 4) {
+// Ways to make ONE dose from whole tablets (no splitting): one strength, or two strengths, up to 3 tablets at a time.
+function doseCombos(strengths, dose, maxPills = 3) {
   const eq = (a, b) => Math.abs(a - b) <= 1e-6 * Math.max(1, b);
   const out = [];
   for (const s of strengths) for (let n = 1; n <= maxPills; n++) if (eq(n * s, dose)) out.push([{ s, n }]);
@@ -566,10 +567,25 @@ function doseCombos(strengths, dose, maxPills = 4) {
 function comboText(combo, unit, variant) {
   return combo.map(c => `${c.n} × ${numTxt(c.s)} ${unitWord(unit)} ${pieceWord(variant, c.n)}`).join(" + ");
 }
+const WEEKLY = 1 / 7;
+const isWeekly = t => Math.abs(t - WEEKLY) < 1e-6;
+function timesText(t) {
+  if (isWeekly(t)) return "once a week";
+  if (t === 1) return "once a day";
+  if (t === 2) return "twice a day";
+  return `${numTxt(t)} times a day`;
+}
+const perMonth = t => isWeekly(t) ? 30 / 7 : t * 30;
+function readTimes() {
+  const v = ($("input[name=ed-times]:checked") || {}).value || "1";
+  if (v === "w") return WEEKLY;
+  if (v === "other") { const n = parseFloat(($("#ed-times-other") || {}).value); return n > 0 && n <= 24 ? n : null; }
+  return +v;
+}
 function openEditor(init) {
   const d = catalog.drugs.get(init.key);
   if (!d) return;
-  S.editing = { id: init.id || null, key: d.key, brand: init.brand || "", variant: init.variant || null, dose: init.dose ?? null, rx: init.rx || null, qty: init.qty ?? null };
+  S.editing = { id: init.id || null, key: d.key, brand: init.brand || "", variant: init.variant || null, per: init.per ?? null, times: init.times ?? 1, rx: init.rx || null, qty: init.qty ?? null };
   const variants = [...d.variants.entries()].sort((a, b) => {
     const pa = a[1].some(e => init.brand && e.brand === init.brand), pb = b[1].some(e => init.brand && e.brand === init.brand);
     return (pb - pa) || (b[1][0].form === "oral-solid") - (a[1][0].form === "oral-solid") || b[1].length - a[1].length;
@@ -593,11 +609,18 @@ function renderEditor() {
   }
   if (vi.doseMode) {
     const u = unitWord(vi.unit);
-    h += `<div class="field"><label for="ed-dose">How much do you take in a whole day?</label>
-      <div class="dose-row"><input id="ed-dose" type="number" inputmode="decimal" min="0" step="any" value="${ed.dose ?? ""}"><span class="unit">${esc(u)} a day</span></div>
-      <p class="hint">Add up all your doses. For example, ${numTxt(vi.strengths[Math.min(1, vi.strengths.length - 1)])} ${esc(u)} twice a day is ${numTxt(2 * vi.strengths[Math.min(1, vi.strengths.length - 1)])} ${esc(u)}.</p></div>
-      <div class="quick" aria-label="Strengths this medicine comes in"><span class="hint">Comes in:</span>${vi.strengths.map(s => `<button type="button" class="btn small" data-qd="${s}">${numTxt(s)} ${esc(u)}</button>`).join("")}</div>
-      <p class="preview" id="ed-preview"></p>`;
+    const t = ed.times ?? 1;
+    const tv = isWeekly(t) ? "w" : [1, 2, 3, 4].includes(t) ? String(t) : "other";
+    const tChoice = (v, label) => `<label class="choice"><input type="radio" name="ed-times" value="${v}" ${tv === v ? "checked" : ""}><span><b>${label}</b></span></label>`;
+    h += `<div class="field"><label for="ed-per">How much do you take each time?</label>
+      <div class="dose-row"><input id="ed-per" type="number" inputmode="decimal" min="0" step="any" value="${ed.per ?? ""}"><span class="unit">${esc(u)} each time</span></div>
+      <div class="quick" aria-label="Strengths this medicine comes in"><span class="hint">Comes in:</span>${vi.strengths.map(s => `<button type="button" class="btn small" data-qd="${s}">${numTxt(s)} ${esc(u)}</button>`).join("")}</div></div>
+      <fieldset class="choices"><legend>How often?</legend><div class="inline-choices">
+        ${tChoice("1", "Once a day")}${tChoice("2", "Twice a day")}${tChoice("3", "3 times a day")}${tChoice("4", "4 times a day")}${tChoice("w", "Once a week")}${tChoice("other", "Other")}
+      </div>
+      <div class="dose-row" id="ed-times-row" ${tv === "other" ? "" : "hidden"}><label for="ed-times-other" class="lbl">Times a day:</label><input id="ed-times-other" type="number" inputmode="numeric" min="1" max="24" step="1" value="${tv === "other" ? numTxt(t) : ""}"></div></fieldset>
+      <p class="preview" id="ed-preview"></p>
+      <p class="hint">We only count whole ${pieceWord(ed.variant, 2)}, because many can't be split. If you take different amounts at different times of day, add this medicine once for each amount.</p>`;
   } else {
     const bases = [...new Map(prods.map(e => [e.base, e])).values()].sort((a, b) => (a.num?.n ?? 0) - (b.num?.n ?? 0) || a.label.localeCompare(b.label));
     if (!ed.rx || !prods.some(e => e.base === catalog.byRx.get(ed.rx)?.base)) {
@@ -642,22 +665,29 @@ function updatePreview() {
   const ed = S.editing, el = $("#ed-preview");
   if (!ed || !el) return;
   const d = catalog.drugs.get(ed.key), prods = d.variants.get(ed.variant), vi = variantInfo(prods);
-  const dose = parseFloat($("#ed-dose").value);
-  if (!(dose > 0)) { el.className = "preview"; el.textContent = "Type your total daily dose, or tap a strength above."; return; }
-  const combos = doseCombos(vi.strengths, dose);
-  if (!combos.length) { el.className = "preview bad"; el.textContent = `No mix of up to 4 ${pieceWord(ed.variant, 2)} a day adds up to exactly ${numTxt(dose)} ${unitWord(vi.unit)}. Check the dose, or pick a strength above.`; return; }
+  const per = parseFloat($("#ed-per").value), times = readTimes();
+  const row = $("#ed-times-row");
+  if (row) row.hidden = (($("input[name=ed-times]:checked") || {}).value !== "other");
+  if (!(per > 0)) { el.className = "preview"; el.textContent = "Type how much you take each time, or tap a strength above."; return; }
+  if (!times) { el.className = "preview bad"; el.textContent = "Type how many times a day you take it."; return; }
+  const combos = doseCombos(vi.strengths, per);
+  const pw = pieceWord(ed.variant, 2);
+  if (!combos.length) { el.className = "preview bad"; el.textContent = `${numTxt(per)} ${unitWord(vi.unit)} can't be made from up to 3 whole ${pw} at a time. Check the amount, or tap a strength above.`; return; }
+  const monthly = n => numTxt(Math.round(n * perMonth(times) * 100) / 100);
   el.className = "preview";
-  el.innerHTML = `We'll compare: ${combos.slice(0, 4).map(c => "<b>" + esc(comboText(c, vi.unit, ed.variant)) + "</b>").join(", ")}${combos.length > 4 ? ` and ${combos.length - 4} more` : ""}.`;
+  el.innerHTML = `Each time you'd take: ${combos.slice(0, 4).map(c => "<b>" + esc(comboText(c, vi.unit, ed.variant)) + "</b>").join(", or ")}${combos.length > 4 ? `, or ${combos.length - 4} other mixes` : ""}. `
+    + `${esc(timesText(times)[0].toUpperCase() + timesText(times).slice(1))}, that's ${esc(monthly(combos[0].reduce((t, c) => t + c.n, 0)))} ${esc(pw)} every 30 days with the first choice.`;
 }
 function saveEditor() {
   const ed = S.editing;
   const d = catalog.drugs.get(ed.key), prods = d.variants.get(ed.variant), vi = variantInfo(prods);
   const med = { id: ed.id || newId(), key: ed.key, name: d.name, brand: ed.brand, variant: ed.variant };
   if (vi.doseMode) {
-    const dose = parseFloat($("#ed-dose").value);
-    if (!(dose > 0)) { setStatus("Please type how much you take in a whole day.", false, true); $("#ed-dose").focus(); return; }
-    if (!doseCombos(vi.strengths, dose).length) { setStatus("That dose can't be made from the tablet strengths available. Please check it.", false, true); $("#ed-dose").focus(); return; }
-    Object.assign(med, { mode: "dose", dose, unit: vi.unit });
+    const per = parseFloat($("#ed-per").value), times = readTimes();
+    if (!(per > 0)) { setStatus("Please type how much you take each time.", false, true); $("#ed-per").focus(); return; }
+    if (!times) { setStatus("Please type how many times a day you take it.", false, true); $("#ed-times-other").focus(); return; }
+    if (!doseCombos(vi.strengths, per).length) { setStatus(`${numTxt(per)} ${unitWord(vi.unit)} can't be made from whole ${pieceWord(ed.variant, 2)} of this medicine. Please check the amount.`, false, true); $("#ed-per").focus(); return; }
+    Object.assign(med, { mode: "dose", per, times, unit: vi.unit });
   } else {
     const rx = ($("input[name=ed-rx]:checked") || {}).value || ed.rx;
     const qty = parseFloat($("#ed-qty").value);
@@ -674,7 +704,7 @@ function saveEditor() {
 }
 function medTitle(m) { return m.brand ? `${m.brand} (${m.name})` : m.name; }
 function medSummary(m) {
-  if (m.mode === "dose") return `${numTxt(m.dose)} ${unitWord(m.unit)} a day · ${plainVariant(m.variant)}`;
+  if (m.mode === "dose") return `${numTxt(m.per)} ${unitWord(m.unit)} ${timesText(m.times)} · ${plainVariant(m.variant)}`;
   const e = catalog && catalog.byRx.get(m.rx);
   return `${e ? e.strength + " " : ""}${plainVariant(m.variant)} · ${numTxt(m.qty)} every 30 days`;
 }
@@ -735,7 +765,7 @@ async function buildOptions(m, opts, notes) {
   let asis = null;
   if (m.mode === "dose") {
     const vi = variantInfo(prods);
-    const combos = doseCombos(vi.strengths, m.dose);
+    const combos = doseCombos(vi.strengths, m.per);
     if (!combos.length) return null;
     const at = s => prods.filter(e => e.num && Math.abs(e.num.n - s) < 1e-9);
     const versionsOf = combo => {
@@ -747,8 +777,8 @@ async function buildOptions(m, opts, notes) {
     };
     const mk = (combo, ver, kind) => ({
       id: "c:" + combo.map(c => c.s + "x" + c.n).join("+") + "|" + ver, kind,
-      title: (ver ? ver + " " : "generic ") + comboText(combo, vi.unit, m.variant) + " a day",
-      items: combo.map(c => { const e = at(c.s).find(x => (x.brand || "") === ver); return { rx: e.rx, label: e.label, qty: c.n * 30, insulin: isInsulin(e) }; })
+      title: (ver ? ver + " " : "generic ") + comboText(combo, vi.unit, m.variant) + ", " + timesText(m.times),
+      items: combo.map(c => { const e = at(c.s).find(x => (x.brand || "") === ver); return { rx: e.rx, label: e.label, qty: c.n * perMonth(m.times), insulin: isInsulin(e) }; })
     });
     const v0 = versionsOf(combos[0]);
     const ver0 = m.brand && v0.includes(m.brand) ? m.brand : v0.includes("") ? "" : v0[0];
@@ -966,7 +996,7 @@ function rank(focusPlan) {
 
 /* ---------- Results ---------- */
 const KIND = { asis: "As prescribed", same: "Same medicine, lower-cost version", strength: "Same medicine, different tablets", ingr: "Same ingredient, different product", class: "Similar medicine" };
-const KIND_NOTE = { same: "Usually your pharmacist can make this change.", strength: "Same total dose. Needs a new prescription.", ingr: "Ask your doctor or pharmacist.", class: "Ask your doctor. Your doctor would choose the dose." };
+const KIND_NOTE = { same: "Usually your pharmacist can make this change.", strength: "Same dose each time, made with different tablets. Needs a new prescription.", ingr: "Ask your doctor or pharmacist.", class: "Ask your doctor. Your doctor would choose the dose." };
 const TYPE = { PDP: "Drug plan only", MA: "Medicare Advantage plan" };
 function viewFilters() {
   return S.view || (S.view = { all: true, type: "", sort: "total" });
@@ -1132,23 +1162,24 @@ $$("input[name=pharm]").forEach(r => r.addEventListener("change", () => { save()
 ["alt-same", "alt-class", "alt-past"].forEach(id => $("#" + id).addEventListener("change", () => { save(); if (S.ctx) compare(); }));
 $("#editor").addEventListener("change", e => {
   if (e.target.name === "ed-variant") { S.editing.variant = e.target.value; S.editing.rx = null; S.editing.qty = null; renderEditor(); }
+  if (e.target.name === "ed-times") { updatePreview(); if (e.target.value === "other") $("#ed-times-other").focus(); }
   if (e.target.name === "ed-rx") { S.editing.rx = e.target.value; S.editing.qty = null; $("#ed-qty").value = ""; prefillQty(S.editing); }
 });
-$("#editor").addEventListener("input", e => { if (e.target.id === "ed-dose") updatePreview(); });
+$("#editor").addEventListener("input", e => { if (e.target.id === "ed-per" || e.target.id === "ed-times-other") updatePreview(); });
 $("#editor").addEventListener("click", e => {
   const q = e.target.closest("[data-qd]");
-  if (q) { $("#ed-dose").value = q.dataset.qd; updatePreview(); return; }
+  if (q) { $("#ed-per").value = q.dataset.qd; updatePreview(); return; }
   if (e.target.id === "ed-save") saveEditor();
   if (e.target.id === "ed-cancel") { S.editing = null; renderEditor(); setStatus(""); }
 });
-$("#editor").addEventListener("keydown", e => { if (e.key === "Enter" && (e.target.id === "ed-dose" || e.target.id === "ed-qty")) { e.preventDefault(); saveEditor(); } });
+$("#editor").addEventListener("keydown", e => { if (e.key === "Enter" && (e.target.id === "ed-per" || e.target.id === "ed-times-other" || e.target.id === "ed-qty")) { e.preventDefault(); saveEditor(); } });
 $("#meds").addEventListener("click", async e => {
   const ed = e.target.closest("[data-edit]"), rm = e.target.closest("[data-rm]");
   if (rm) { S.meds = S.meds.filter(m => m.id !== rm.dataset.rm); delete S.locks[rm.dataset.rm]; renderMeds(); save(); }
   if (ed) {
     const m = S.meds.find(x => x.id === ed.dataset.edit);
     try { await ensureCatalog(); } catch (err) { return; }
-    if (m && catalog.drugs.has(m.key)) openEditor({ id: m.id, key: m.key, brand: m.brand, variant: m.variant, dose: m.dose, rx: m.rx, qty: m.qty });
+    if (m && catalog.drugs.has(m.key)) openEditor({ id: m.id, key: m.key, brand: m.brand, variant: m.variant, per: m.per, times: m.times, rx: m.rx, qty: m.qty });
   }
 });
 $("#results").addEventListener("change", e => {
@@ -1189,8 +1220,11 @@ renderMeds();
   if (saved) {
     if (saved.pharm != null) { const r = $(`input[name=pharm][value="${saved.pharm}"]`); if (r) r.checked = true; }
     if (saved.alts) { $("#alt-same").checked = saved.alts.same !== false; $("#alt-class").checked = saved.alts.cls !== false; $("#alt-past").checked = !!saved.alts.past; }
-    if (Array.isArray(saved.meds)) S.meds = saved.meds.filter(m => m && m.key && m.variant);
     if (saved.locks) S.locks = saved.locks;
+    if (Array.isArray(saved.meds)) S.meds = saved.meds.filter(m => m && m.key && m.variant).map(m => {
+      if (m.mode === "dose" && m.per == null) { delete S.locks[m.id]; return { ...m, per: m.dose, times: 1 }; }
+      return m;
+    });
   }
   if (S.meds.length) {
     try { await ensureCatalog(); } catch (e) {}
