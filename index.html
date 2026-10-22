@@ -1227,10 +1227,11 @@ function loadSupport() {
     // The widget's button is a plain div; make it reachable and usable from the keyboard
     b.setAttribute("role", "button"); b.tabIndex = 0; b.setAttribute("aria-label", "Buy me a coffee (opens a support page)");
     b.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); b.click(); } });
-    document.addEventListener("keydown", e => {
-      const f = document.getElementById("bmc-iframe");
-      if (e.key === "Escape" && f && f.style.opacity === "1" && f.parentElement) { f.parentElement.click(); b.focus(); }
-    });
+    const f = document.getElementById("bmc-iframe"), shade = f && f.parentElement;
+    if (shade) {
+      shade.addEventListener("click", supportTick);   // the popup closed; hide the button if the results are away
+      document.addEventListener("keydown", e => { if (e.key === "Escape" && f.style.opacity === "1") { shade.click(); b.focus(); } });
+    }
     supportTick();
   };
   s.onerror = () => { bmcState = "failed"; };   // e.g. blocked by an ad blocker
