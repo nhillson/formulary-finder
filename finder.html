@@ -208,8 +208,13 @@ mark{background:var(--hl);color:var(--ink);border-radius:2px;padding:0 1px}
 .codes dt{font-family:var(--mono);font-weight:500;color:var(--rx)}
 .codes dd{margin:0;color:var(--ink-2)}
 footer p{margin:0;font-size:13px;color:var(--ink-3);max-width:78ch}
-.xlink{margin:0;font-size:14.5px;font-weight:600}
-.xlink a,a{color:var(--rx)}
+a{color:var(--rx)}
+.bigcta{display:grid;gap:4px;padding:16px 20px;border-radius:12px;background:var(--rx);color:var(--rx-ink);text-decoration:none;max-width:44rem}
+.bigcta:hover{background:var(--rx-strong)}
+.bigcta:focus-visible{outline:3px solid var(--rx);outline-offset:3px}
+.bigcta b{font-family:var(--display);font-stretch:112%;font-weight:800;font-size:clamp(19px,4.2vw,24px);line-height:1.2}
+.bigcta span{font-size:15.5px;line-height:1.4}
+.otherbox{display:grid;gap:10px}
 
 /* Medication suggestions */
 .acfield{position:relative}
@@ -239,8 +244,8 @@ select:focus-visible{outline:2px solid var(--rx);outline-offset:2px}
 <div class="wrap">
   <header class="top">
     <div class="brand"><span class="rxmark" aria-hidden="true">℞</span><h1>Formulary Finder</h1></div>
-    <p class="xlink"><a href="./">← On Medicare? Find your lowest-cost drug plan</a></p>
-    <p class="lede">Type the medication you take to see its closest substitutes. Add your plan's drug list and every one of them gets checked for tier, prior authorization, step therapy and quantity limits.</p>
+    <a class="bigcta" href="./"><b>On Medicare? Find your lowest-cost drug plan →</b><span>Compare every plan in your area by what you'd pay for the year, including lower-cost switches.</span></a>
+    <p class="lede">Type the medication you take to see its closest substitutes. Choose your Medicare plan and each one is checked for its cost tier and any restrictions, like prior authorization or quantity limits.</p>
   </header>
 
   <div class="bench">
@@ -249,7 +254,7 @@ select:focus-visible{outline:2px solid var(--rx);outline-offset:2px}
       <div class="fields">
         <div class="field acfield">
           <label for="drug">Medication you take</label>
-          <input id="drug" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Start typing a brand or generic name" value="Symbicort" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="drug-ac">
+          <input id="drug" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Start typing a brand or generic name" value="" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="drug-ac">
           <ul class="ac" id="drug-ac" role="listbox" aria-label="Medication suggestions" hidden></ul>
         </div>
         <div class="field">
@@ -257,19 +262,12 @@ select:focus-visible{outline:2px solid var(--rx);outline-offset:2px}
           <input id="use" type="text" autocomplete="off" placeholder="e.g. asthma">
         </div>
         <div class="field">
-          <span class="flabel">Your plan's drug list <span class="opt">optional</span></span>
+          <span class="flabel">Your current Medicare plan <span class="opt">optional</span></span>
           <div class="drop" id="drop">
             <div id="listinfo"></div>
             <div class="dropbtns">
-              <button type="button" class="btn-sm" id="pickfile">Upload PDF</button>
-              <input id="file" type="file" accept=".pdf,application/pdf,.txt,.csv,text/plain" class="vh" tabindex="-1" aria-hidden="true">
-              <button type="button" class="btn-sm ghost" id="pastebtn">Paste text</button>
-              <button type="button" class="btn-sm ghost" id="medbtn" aria-expanded="false" aria-controls="medibox">Medicare plan</button>
+              <button type="button" class="btn-sm" id="medbtn" aria-expanded="false" aria-controls="medibox">Choose your plan</button>
               <button type="button" class="btn-sm ghost" id="clearlist">Remove</button>
-            </div>
-            <div class="pastebox" id="pastebox" hidden>
-              <textarea id="paste" rows="5" placeholder="Paste the drug list text from your plan's website"></textarea>
-              <div class="row"><button type="button" class="btn-sm" id="pasteuse">Use this text</button></div>
             </div>
             <div class="medibox" id="medibox" hidden>
               <div class="medrow">
@@ -279,9 +277,21 @@ select:focus-visible{outline:2px solid var(--rx);outline-offset:2px}
               <label class="vh" for="mq">Plan ID or plan name</label>
               <input id="mq" type="search" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Plan ID (S1234-001) or plan name">
               <div class="mres" id="mres" aria-live="polite"></div>
-              <p class="hint">From Medicare's public plan data, updated monthly. Covers stand-alone drug plans (PDP) and Medicare Advantage plans with drug coverage. Employer group plans aren't included.</p>
+              <p class="hint">From Medicare's public plan data, updated twice a week. Includes drug plans and Medicare Advantage plans with drug coverage. Employer group plans aren't included.</p>
             </div>
-            <p class="hint">Medicare drug plan? Tap Medicare plan to load its list automatically. For other insurance, look on your plan's member site under Pharmacy for the formulary or drug list. Files are read in this browser and aren't uploaded.</p>
+            <button type="button" class="linkbtn" id="otherins" aria-expanded="false" aria-controls="otherbox">Other insurance? Upload or paste its drug list</button>
+            <div class="otherbox" id="otherbox" hidden>
+              <div class="dropbtns">
+                <button type="button" class="btn-sm" id="pickfile">Upload PDF</button>
+                <input id="file" type="file" accept=".pdf,application/pdf,.txt,.csv,text/plain" class="vh" tabindex="-1" aria-hidden="true">
+                <button type="button" class="btn-sm ghost" id="pastebtn">Paste text</button>
+              </div>
+              <div class="pastebox" id="pastebox" hidden>
+                <textarea id="paste" rows="5" placeholder="Paste the drug list text from your plan's website"></textarea>
+                <div class="row"><button type="button" class="btn-sm" id="pasteuse">Use this text</button></div>
+              </div>
+              <p class="hint">Look on your plan's member website under Pharmacy for the formulary or drug list. Files are read in this browser and aren't uploaded.</p>
+            </div>
           </div>
         </div>
         <div class="field acfield">
@@ -749,7 +759,7 @@ function relDesc(ing, p) {
 }
 
 /* ---------- State ---------- */
-const state = { list: sampleList(), plan: null, read: null, note: "", busy: false };
+const state = { list: null, plan: null, read: null, note: "", busy: false };
 let sample = null;
 let ctl = null;
 
@@ -860,7 +870,7 @@ function render() {
   const plan = state.plan;
   if (!plan) {
     const d = $("#drug").value.trim();
-    R.innerHTML = `<div class="ready"><h2 class="gt">Ready</h2><p>${state.list ? `Drug list loaded: ${esc(state.list.name)}. ` : ""}Press Find substitutes to look up ${d ? esc(d) : "your medication"}${state.list ? " and check every substitute against the list" : ""}.</p></div>`;
+    R.innerHTML = `<div class="ready"><h2 class="gt">${d ? "Ready" : "Start with your medication"}</h2><p>${d ? "" : "Type the medication you take in the box on this page. "}${state.list ? `Plan chosen: ${esc(state.list.name)}. ` : "To check coverage, choose your Medicare plan too. "}Then press ${state.list ? "Find substitutes &amp; check coverage" : "Find substitutes"}.</p></div>`;
     $("#go").textContent = state.list ? "Find substitutes & check coverage" : "Find substitutes";
     return;
   }
@@ -894,7 +904,7 @@ function renderList() {
   const L = state.list;
   $("#listinfo").innerHTML = L
     ? `<div class="li-name">${L.example ? '<span class="tag">Example</span>' : L.medicare ? '<span class="tag">Medicare ' + esc(L.medicare.year) + '</span>' : ""}<span>${esc(L.name)}</span></div><div class="li-meta">${L.medicare ? `${esc(L.medicare.id)} · ${L.lines.length.toLocaleString()} drugs · CMS data ${esc(fmtRelease(L.medicare.release))}` : `${L.pages} page${L.pages === 1 ? "" : "s"} · ${L.lines.length.toLocaleString()} lines of text`}</div>`
-    : `<p class="li-empty">No list loaded. You'll still get substitutes; add a list to check coverage.</p>`;
+    : `<p class="li-empty">No plan chosen. You'll still see substitutes; choose your plan to check which ones it covers.</p>`;
   $("#clearlist").hidden = !L;
 }
 
@@ -1121,6 +1131,11 @@ $("#rxdate").textContent = new Date().toLocaleDateString(undefined, { month: "sh
 $("#f").addEventListener("submit", e => { e.preventDefault(); check(); });
 $("#pickfile").addEventListener("click", () => $("#file").click());
 $("#file").addEventListener("change", e => loadFile(e.target.files && e.target.files[0]));
+$("#otherins").addEventListener("click", () => {
+  const b = $("#otherbox"); b.hidden = !b.hidden;
+  $("#otherins").setAttribute("aria-expanded", String(!b.hidden));
+  if (!b.hidden) { $("#medibox").hidden = true; $("#medbtn").setAttribute("aria-expanded", "false"); }
+});
 $("#pastebtn").addEventListener("click", () => { const b = $("#pastebox"); b.hidden = !b.hidden; if (!b.hidden) { $("#medibox").hidden = true; $("#medbtn").setAttribute("aria-expanded", "false"); $("#paste").focus(); } });
 $("#pasteuse").addEventListener("click", () => {
   const res = linesFromText($("#paste").value);
@@ -1283,7 +1298,8 @@ function medicareLines(form, names) {
   const lines = [];
   for (const row of form.d || []) {
     const [rx, tier, flags, qa, qd] = row;
-    const segs = [names[rx] || "RxCUI " + rx];
+    const nm = (names[rx] || "RxCUI " + rx).replace(/^((?:NDA|BLA|ANDA)\d+)\s+(.*?)(\s*\[[^\]]+\])?$/, (m0, app, rest, br) => `${rest} (version ${app})${br || ""}`);
+    const segs = [nm];
     if (tier) segs.push("Tier " + tier);
     if (flags & 1) segs.push("PA");
     if (flags & 2) segs.push("ST");
@@ -1297,7 +1313,7 @@ async function openMedicare() {
   box.hidden = !box.hidden;
   $("#medbtn").setAttribute("aria-expanded", String(!box.hidden));
   if (box.hidden) return;
-  $("#pastebox").hidden = true;
+  $("#pastebox").hidden = true; $("#otherbox").hidden = true; $("#otherins").setAttribute("aria-expanded", "false");
   if (!med.index) {
     $("#mres").innerHTML = '<p class="hint">Loading Medicare plans…</p>';
     try { med.index = await getData("index.json"); }
@@ -1308,8 +1324,9 @@ async function openMedicare() {
     const years = (med.index.years || []).map(y => y.year);
     if (!years.length) { $("#mres").innerHTML = '<p class="none">No Medicare plan data is available right now.</p>'; return; }
     $("#myear").innerHTML = years.map(y => `<option value="${y}">${y} plan year</option>`).join("");
-    const cy = new Date().getFullYear();
-    $("#myear").value = String(years.includes(cy) ? cy : years[years.length - 1]);
+    const now = new Date(), cy = now.getFullYear();
+    const enrolling = now.getMonth() > 9 || (now.getMonth() === 9 && now.getDate() >= 15);
+    $("#myear").value = String(enrolling && years.includes(cy + 1) ? cy + 1 : years.includes(cy) ? cy : years[years.length - 1]);
   }
   await loadPlanYear(+$("#myear").value);
   $("#mq").focus();
@@ -1372,7 +1389,7 @@ $("#mres").addEventListener("click", e => { const b = e.target.closest && e.targ
 if (window.__FF_TEST__) window.__ffTest = { state, check, suggest, medLookup, ensureMeds, openMedicare, loadPlanYear, searchPlans, pickPlan, render };
 
 renderList();
-check({ quiet: true });
+render();
 
 /* ---------- Claude with the viewer's own API key ---------- */
 const KEY_STORE = "formulary-finder.anthropic-key";

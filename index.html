@@ -86,6 +86,14 @@ input[type=text],input[type=search],input[type=number],select{width:100%;font:in
 input::placeholder{color:var(--ink-3)}
 input:focus-visible,select:focus-visible,button:focus-visible,summary:focus-visible,.choice input:focus-visible + span,.opt input:focus-visible{outline:3px solid var(--rx);outline-offset:2px}
 .hint{margin:0;font-size:.92rem;color:var(--ink-3);line-height:1.5}
+.linkbtn{font:inherit;font-weight:700;color:var(--rx);background:none;border:0;padding:.2rem .3rem;text-decoration:underline;text-underline-offset:3px;cursor:pointer;min-height:2.2rem}
+.btn.wide{width:100%}
+.p-sum{margin:0;font-size:1rem}
+.p-sum .nc{color:var(--bad);font-weight:700}
+.p-details{display:grid;gap:.8rem}
+.pm-instead{margin:0;font-size:.98rem}
+.save-line{margin:0;font-weight:800;color:var(--ok);font-size:1.08rem}
+.pm-cost small,.o-cost small{display:block;font-size:.8rem;font-weight:500;color:var(--ink-2);text-align:right}
 .vh{position:absolute!important;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 .btn{font:inherit;font-weight:700;font-size:1rem;min-height:2.9rem;padding:.55rem 1.1rem;border-radius:.7rem;border:2px solid var(--rx);background:var(--rx);color:var(--rx-ink);cursor:pointer;text-align:center}
 .btn:hover{background:var(--rx-strong);border-color:var(--rx-strong)}
@@ -213,6 +221,7 @@ footer p{margin:0;font-size:.92rem;color:var(--ink-2);max-width:48em}
   html{font-size:100%}
   body{background:#fff;color:#000}
   .plan{break-inside:avoid;border:1px solid #999}
+  .p-details{display:grid!important}
   .pm-switch{background:#f2f2f2}
 }
 </style>
@@ -235,8 +244,18 @@ footer p{margin:0;font-size:.92rem;color:var(--ink-2);max-width:48em}
 
   <form id="f" novalidate>
     <ol class="steps">
+      <li class="step" id="step-kind">
+        <div class="step-h"><span class="step-n" aria-hidden="true">1</span><h2>What kind of Medicare coverage do you want?</h2></div>
+        <fieldset class="choices">
+          <legend class="vh">Kind of coverage</legend>
+          <label class="choice"><input type="radio" name="ptype" value="PDP"><span><b>Original Medicare plus a separate drug plan</b><small>You keep Original Medicare, and a Medigap (Medicare Supplement) policy if you have one, and add a plan that covers only prescriptions. You can see any doctor who takes Medicare.</small></span></label>
+          <label class="choice"><input type="radio" name="ptype" value="MA"><span><b>A Medicare Advantage plan</b><small>An all-in-one plan from a private company that takes the place of Original Medicare and usually includes drug coverage. You generally use the plan's doctors and hospitals, and you can't use a Medigap policy with it.</small></span></label>
+          <label class="choice"><input type="radio" name="ptype" value="" checked><span><b>I'm not sure. Show me both.</b><small>Plans of both kinds are listed, and each one says which kind it is.</small></span></label>
+        </fieldset>
+      </li>
+
       <li class="step">
-        <div class="step-h"><span class="step-n" aria-hidden="true">1</span><h2>Where do you live?</h2></div>
+        <div class="step-h"><span class="step-n" aria-hidden="true">2</span><h2>Where do you live?</h2></div>
         <div class="grid3">
           <div class="field"><label for="year">Plan year</label><select id="year"><option value="">Loading…</option></select></div>
           <div class="field"><label for="state">State</label><select id="state"><option value="">Choose your state</option></select></div>
@@ -246,7 +265,7 @@ footer p{margin:0;font-size:.92rem;color:var(--ink-2);max-width:48em}
       </li>
 
       <li class="step">
-        <div class="step-h"><span class="step-n" aria-hidden="true">2</span><h2>What medicines do you take?</h2></div>
+        <div class="step-h"><span class="step-n" aria-hidden="true">3</span><h2>What medicines do you take?</h2></div>
         <div class="field" id="pickfield">
           <label for="pick">Add a medicine</label>
           <input id="pick" type="search" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Type the name, like Lipitor or atorvastatin" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="pick-ac">
@@ -258,7 +277,7 @@ footer p{margin:0;font-size:.92rem;color:var(--ink-2);max-width:48em}
       </li>
 
       <li class="step">
-        <div class="step-h"><span class="step-n" aria-hidden="true">3</span><h2>How do you get your medicines?</h2></div>
+        <div class="step-h"><span class="step-n" aria-hidden="true">4</span><h2>How do you get your medicines?</h2></div>
         <fieldset class="choices">
           <legend class="vh">Pharmacy type</legend>
           <label class="choice"><input type="radio" name="pharm" value="0" checked><span><b>A preferred pharmacy</b><small>Many plans charge less at certain pharmacies they choose. Often the lowest price.</small></span></label>
@@ -281,7 +300,7 @@ footer p{margin:0;font-size:.92rem;color:var(--ink-2);max-width:48em}
 
   <main id="results" aria-live="polite">
     <div class="ready">
-      <p><b>Your results will show here.</b> Fill in the three steps above, then press <b>Find my lowest-cost plans</b>.</p>
+      <p><b>Your results will show here.</b> Fill in the four steps above, then press <b>Find my lowest-cost plans</b>.</p>
       <p>Your entries are saved on this device so you can come back later.</p>
     </div>
   </main>
@@ -327,7 +346,8 @@ const STATE_NAMES = { AL: "Alabama", AK: "Alaska", AZ: "Arizona", AR: "Arkansas"
   SD: "South Dakota", TN: "Tennessee", TX: "Texas", UT: "Utah", VT: "Vermont", VA: "Virginia", WA: "Washington", WV: "West Virginia", WI: "Wisconsin", WY: "Wyoming",
   PR: "Puerto Rico", GU: "Guam", VI: "U.S. Virgin Islands", AS: "American Samoa", MP: "Northern Mariana Islands" };
 
-const S = { index: null, names: null, years: {}, states: {}, rx: {}, meds: [], locks: {}, ctx: null, view: null, shown: 10, editing: null, open: {} };
+const S = { index: null, names: null, years: {}, states: {}, rx: {}, meds: [], locks: {}, ctx: null, view: null, shown: 10, editing: null, open: {}, planOpen: {}, allOpen: false, yearChosen: false };
+try { S.allOpen = !!localStorage.getItem("formulary-finder.allopen"); } catch (e) {}
 
 /* ---------- Small helpers ---------- */
 async function getData(path) {
@@ -350,7 +370,7 @@ const pharm = () => +(($("input[name=pharm]:checked") || { value: 0 }).value);
 const altOpts = () => ({ same: $("#alt-same").checked, cls: $("#alt-class").checked, past: $("#alt-past").checked });
 function save() {
   try {
-    localStorage.setItem(STORE, JSON.stringify({ year: $("#year").value, state: $("#state").value, county: $("#county").value, pharm: pharm(),
+    localStorage.setItem(STORE, JSON.stringify({ year: $("#year").value, yearChosen: S.yearChosen, ptype: ptype(), state: $("#state").value, county: $("#county").value, pharm: pharm(),
       alts: altOpts(), meds: S.meds, locks: S.locks }));
   } catch (e) {}
 }
@@ -380,8 +400,12 @@ const ingKeyOf = names => names.map(baseIng).filter(Boolean).sort().join("+");
 function splitLabel(label) {
   const bm = label.match(/\s*\[([^\]]+)\]\s*$/);
   const base = bm ? label.slice(0, bm.index) : label;
-  const qm = base.match(/^(\d[\d.,]*\s+[A-Z][A-Z/]*)\s+(?=[a-z])/);
-  const s = qm ? base.slice(qm[0].length) : base;
+  // Some products (mostly inhalers that can't be swapped for each other) start with an FDA application number
+  const am = base.match(/^((?:NDA|BLA|ANDA)\d+)\s+/);
+  const app = am ? am[1] : "";
+  const core = am ? base.slice(am[0].length) : base;
+  const qm = core.match(/^(\d[\d.,]*\s+[A-Z][A-Z/]*)\s+(?=[a-z])/);
+  const s = qm ? core.slice(qm[0].length) : core;
   const m = s.match(/\s(?=\d)/);
   const ingText = m ? s.slice(0, m.index) : s.split(/\s(?=[A-Z])/)[0];
   const rest = m ? s.slice(m.index + 1) : s.slice(ingText.length).trim();
@@ -390,7 +414,7 @@ function splitLabel(label) {
   const doseForm = (sm ? rest.slice(sm[0].length) : rest).trim();
   const qty = qm ? qm[1] : "";
   const variant = (/^\d+ HR$/.test(qty) ? qty + " " : "") + doseForm;
-  return { base, brand: bm ? bm[1] : "", ingText, ingKey: ingKeyOf(ingText.split(" / ")), strength, doseForm, qty, variant: variant || "other" };
+  return { base, app, brand: bm ? bm[1] : "", ingText, ingKey: ingKeyOf(ingText.split(" / ")), strength, doseForm, qty, variant: variant || "other" };
 }
 function formGroup(label) {
   const l = label.toLowerCase();
@@ -408,10 +432,15 @@ function formGroup(label) {
   if (/tablet|capsule|pill|lozenge|troche|chewable|disintegrating|film|granule/.test(l)) return "oral-solid";
   return "other";
 }
+function plainStrength(st) {
+  return String(st || "").replace(/MCG\/ACTUAT/g, "mcg per puff").replace(/MG\/ACTUAT/g, "mg per puff").replace(/UNT\/ML/g, "units per mL")
+    .replace(/MG\/ML/g, "mg per mL").replace(/MCG\/ML/g, "mcg per mL").replace(/MG\/HR/g, "mg per hour").replace(/\bMG\b/g, "mg").replace(/\bMCG\b/g, "mcg")
+    .replace(/\bML\b/g, "mL").replace(/\bUNT\b/g, "units").replace(/\bMEQ\b/g, "mEq");
+}
 function plainVariant(v) {
   let t = v.replace(/^(\d+) HR\s*/, (_, h) => h + "-hour ").toLowerCase()
     .replace(/\boral\b\s*/g, "").replace(/extended release/g, "extended-release").replace(/delayed release/g, "delayed-release")
-    .replace(/disintegrating tablet/g, "dissolving tablet").replace(/\s+/g, " ").trim();
+    .replace(/disintegrating tablet/g, "dissolving tablet").replace(/(\d[\d.]*) actuat\b/g, "$1 puffs").replace(/(\d[\d.]*) g\b/g, "$1 grams").replace(/\s+/g, " ").trim();
   return t || "other form";
 }
 const unitWord = u => ({ MG: "mg", MCG: "mcg", G: "g", MEQ: "mEq", UNT: "units" }[u] || u.toLowerCase());
@@ -630,7 +659,7 @@ function renderEditor() {
     const curBase = catalog.byRx.get(ed.rx).base;
     h += `<fieldset class="choices"><legend>Which strength?</legend>${bases.slice(0, 14).map(e => {
       const brands = [...new Set((catalog.byBase.get(e.base) || []).map(x => x.brand).filter(Boolean))];
-      return `<label class="choice"><input type="radio" name="ed-rx" value="${esc(e.rx)}" ${e.base === curBase ? "checked" : ""}><span><b>${esc(e.strength || plainVariant(ed.variant))}</b><small>${esc(e.base)}${brands.length ? " · " + esc(brands.join(", ")) : ""}</small></span></label>`;
+      return `<label class="choice"><input type="radio" name="ed-rx" value="${esc(e.rx)}" ${e.base === curBase ? "checked" : ""}><span><b>${esc(plainStrength(e.strength) || plainVariant(ed.variant))}</b><small>${esc(plainVariant(e.variant))}${e.app ? " · version " + esc(e.app) : ""}${brands.length ? " · " + esc(brands.join(", ")) : ""}</small></span></label>`;
     }).join("")}</fieldset>
       <div class="field"><label for="ed-qty">How much do you get every 30 days?</label>
       <div class="dose-row"><input id="ed-qty" type="number" inputmode="decimal" min="0" step="any" value="${ed.qty ?? ""}"><span class="unit">${esc(qtyUnit(ed.variant))}</span></div>
@@ -706,7 +735,7 @@ function medTitle(m) { return m.brand ? `${m.brand} (${m.name})` : m.name; }
 function medSummary(m) {
   if (m.mode === "dose") return `${numTxt(m.per)} ${unitWord(m.unit)} ${timesText(m.times)} · ${plainVariant(m.variant)}`;
   const e = catalog && catalog.byRx.get(m.rx);
-  return `${e ? e.strength + " " : ""}${plainVariant(m.variant)} · ${numTxt(m.qty)} every 30 days`;
+  return `${e ? plainStrength(e.strength) + " " : ""}${plainVariant(m.variant)} · ${numTxt(m.qty)} every 30 days`;
 }
 function renderMeds() {
   const ul = $("#meds");
@@ -747,7 +776,7 @@ async function claudeAlternatives(name, form) {
 function niceName(e, n) {
   const ing = e.ingKey.split("+").join(" / ");
   const who = e.brand ? `${e.brand} (${ing})` : `generic ${ing}`;
-  return `${who} ${e.strength.toLowerCase().replace(/\bmg\b/g, "mg")} ${plainVariant(e.variant)}`.replace(/\s+/g, " ").trim();
+  return `${who} ${plainStrength(e.strength)} ${plainVariant(e.variant)}${e.app ? ` (version ${e.app})` : ""}`.replace(/\s+/g, " ").trim();
 }
 function pickStrengths(prods, n) {
   const sorted = prods.slice().sort((a, b) => (a.num?.n ?? 0) - (b.num?.n ?? 0) || a.label.localeCompare(b.label));
@@ -919,19 +948,27 @@ function planChoices(plan, mo, ph, cap, opts) {
 function evaluatePlan(plan, ph, cap, opts) {
   const meds = S.ctx.medOpts.map(mo => {
     const choices = planChoices(plan, mo, ph, cap, opts);
-    const asis = choices[0];
     const lock = S.locks[mo.med.id];
-    let pick = null;
-    if (lock && lock !== "auto") pick = choices.find(c => c.opt.id === lock) || null;
-    if (!pick) {
-      pick = asis;
-      let best = asis.cost == null ? Infinity : asis.cost;
-      for (const c of choices.slice(1)) {
-        if (c.cost == null || (c.extra && !opts.past)) continue;
-        if (c.cost < best - 0.005) { best = c.cost; pick = c; }
-      }
+    const locked = lock && lock !== "auto" ? choices.find(c => c.opt.id === lock) || null : null;
+    return { mo, choices, asis: choices[0], pick: locked || choices[0], locked: !!locked };
+  });
+  // The plan's drug cost for the year if medicine i used choice c, with every other medicine as currently chosen
+  const totalWith = (i, c) => {
+    const items = [];
+    meds.forEach((m, k) => (k === i ? c : m.pick).opt.items.forEach(it => items.push(it)));
+    const r = simulate(plan, items, ph, cap);
+    return r.unknown ? null : r.total;
+  };
+  // Pick each medicine's option by what it does to the yearly total. Two passes, because medicines share the deductible and the yearly limit.
+  for (let pass = 0; pass < 2; pass++) meds.forEach((m, i) => {
+    if (m.locked) return;
+    let best = m.asis, bestT = totalWith(i, m.asis);
+    for (const c of m.choices) {
+      if (c === m.asis || (c.extra && !opts.past)) continue;
+      const t = totalWith(i, c);
+      if (t != null && (bestT == null || t < bestT - 0.005)) { best = c; bestT = t; }
     }
-    return { mo, choices, asis, pick, locked: !!(lock && lock !== "auto" && pick.opt.id === lock) };
+    m.pick = best;
   });
   const flat = [], owner = [];
   meds.forEach((m, i) => m.pick.opt.items.forEach(it => { flat.push(it); owner.push(i); }));
@@ -944,6 +981,8 @@ function evaluatePlan(plan, ph, cap, opts) {
     m.months = MONTHS.map((_, k) => parts.some(p => p.months[k] == null) ? null : parts.reduce((t, p) => t + p.months[k], 0));
     m.total = parts.some(p => p.months.includes(null)) ? null : parts.reduce((t, p) => t + p.total, 0);
     m.parts = parts;
+    m.choices.forEach(c => { c.total = c === m.pick ? (fin.unknown ? null : fin.total) : totalWith(i, c); });
+    m.saves = m.pick !== m.asis && m.asis.total != null && !fin.unknown ? m.asis.total - fin.total : null;
   });
   const [id, name, org, prem, ded, , , snp, , type, cs] = plan;
   const premium = (prem || 0) * 12;
@@ -955,8 +994,8 @@ function evaluatePlan(plan, ph, cap, opts) {
 /* ---------- Compare ---------- */
 async function compare(scroll) {
   const y = +$("#year").value, st = $("#state").value, county = $("#county").value;
-  if (!y || !st) { setStatus("Please choose your plan year and state in step 1.", false, true); $("#state").focus(); return; }
-  if (!S.meds.length) { setStatus("Please add at least one medicine in step 2.", false, true); $("#pick").focus(); return; }
+  if (!y || !st) { setStatus("Please choose your plan year and state in step 2.", false, true); $("#state").focus(); return; }
+  if (!S.meds.length) { setStatus("Please add at least one medicine in step 3.", false, true); $("#pick").focus(); return; }
   const opts = altOpts();
   $("#go").disabled = true; setStatus("Getting plans and prices…", true);
   try {
@@ -997,36 +1036,40 @@ function rank(focusPlan) {
 /* ---------- Results ---------- */
 const KIND = { asis: "As prescribed", same: "Same medicine, lower-cost version", strength: "Same medicine, different tablets", ingr: "Same ingredient, different product", class: "Similar medicine" };
 const KIND_NOTE = { same: "Usually your pharmacist can make this change.", strength: "Same dose each time, made with different tablets. Needs a new prescription.", ingr: "Ask your doctor or pharmacist.", class: "Ask your doctor. Your doctor would choose the dose." };
-const TYPE = { PDP: "Drug plan only", MA: "Medicare Advantage plan" };
+const TYPE = { PDP: "Drug plan to add to Original Medicare", MA: "Medicare Advantage plan" };
+const TYPE_LIST = { PDP: "Drug plans to add to Original Medicare", MA: "Medicare Advantage plans", "": "Both kinds of plans" };
+const ptype = () => (($("input[name=ptype]:checked") || {}).value || "");
 function viewFilters() {
-  return S.view || (S.view = { all: true, type: "", sort: "total" });
+  return S.view || (S.view = { all: true, sort: "total" });
 }
 function renderResults(focusPlan) {
   const C = S.ctx, V = viewFilters();
   if (!C || !C.res) return;
-  let list = C.res.slice();
+  const T = ptype();
+  const typed = C.res.filter(r => !T || r.type === T);
+  let list = typed.slice();
   const coverAll = list.filter(r => r.coversAll).length;
   if (V.all && coverAll) list = list.filter(r => r.coversAll);
-  if (V.type) list = list.filter(r => r.type === V.type);
   const key = V.sort === "premium" ? r => r.prem ?? 1e9 : V.sort === "asis" ? r => r.asisTotal : r => r.total;
   const unk = r => V.sort === "asis" ? r.asisUnknown : r.unknown;
   list.sort((a, b) => (a.noCost - b.noCost) || (unk(a) - unk(b)) || key(a) - key(b));
   const ok = list.filter(r => !r.unknown && !r.noCost);
   const best = ok.slice().sort((a, b) => a.total - b.total)[0];
-  const bestAsis = C.res.filter(r => !r.asisUnknown && !r.noCost).sort((a, b) => a.asisTotal - b.asisTotal)[0];
+  const bestAsis = list.filter(r => !r.asisUnknown && !r.noCost).sort((a, b) => a.asisTotal - b.asisTotal)[0];
   const where = `${C.countyName ? C.countyName + " County, " : ""}${STATE_NAMES[C.st] || C.st}`;
   const max = Math.max(1, ...list.slice(0, S.shown).filter(r => !r.unknown).map(r => r.total));
   const prices = C.data.prices;
-  let h = `<div class="rhead"><p class="kicker">${C.y} plans in ${esc(where)}</p>
+  let h = `<div class="rhead"><p class="kicker">${C.y} plans in ${esc(where)} · ${esc(TYPE_LIST[T])} <button type="button" class="linkbtn no-print" id="chg-kind">Change</button></p>
     <h2>${best ? `Lowest estimate: ${esc(money0.format(best.total))} for the year with ${esc(best.name)}` : "We couldn't make a complete estimate"}</h2>
     ${best && best.switched ? `<p class="meta">That includes ${best.switched} lower-cost switch${best.switched === 1 ? "" : "es"}. You can say no to any switch below.</p>` : ""}
     ${bestAsis && best && (bestAsis !== best || best.switched) && bestAsis.asisTotal - best.total >= 1 ? `<p class="meta">With no switches at all, the lowest is ${esc(money0.format(bestAsis.asisTotal))} with ${esc(bestAsis.name)}.</p>` : ""}
-    <p class="meta">${C.res.length} plans checked. The most anyone pays for covered medicines in ${C.y} is ${esc(money0.format(C.cap))}, plus premiums.</p></div>`;
-  if (!C.county) h += `<p class="notice">These are plans across all of ${esc(STATE_NAMES[C.st] || C.st)}. Choose your county in step 1 for the exact list.</p>`;
+    <p class="meta">${typed.length} plans checked. The most anyone pays for covered medicines in ${C.y} is ${esc(money0.format(C.cap))}, plus premiums.</p></div>`;
+  if (!C.county) h += `<p class="notice">These are plans across all of ${esc(STATE_NAMES[C.st] || C.st)}. Choose your county in step 2 for the exact list.</p>`;
   if (!prices) h += `<p class="notice warn">Medicare hasn't published prices yet, so some estimates are incomplete.</p>`;
   else if (!prices.own) h += `<p class="notice warn">Medicare publishes ${C.y} prices in January. Until then, these ${C.y} estimates use typical ${prices.year} prices. Copays and premiums are exact, but costs shown as a percentage are approximate.</p>`;
   (C.notes || []).forEach(n => { h += `<p class="notice">${esc(n)}</p>`; });
-  if (V.all && !coverAll) h += `<p class="notice warn">No plan here covers all of your medicines. All plans are shown, and medicines a plan doesn't cover are counted at full price.</p>`;
+  if (!typed.length) h += `<p class="notice warn">There are no ${esc(TYPE_LIST[T].toLowerCase())} here. Change your answer in step 1 to see other plans.</p>`;
+  else if (V.all && !coverAll) h += `<p class="notice warn">No plan here covers all of your medicines. All plans are shown, and medicines a plan doesn't cover are counted at full price.</p>`;
   const locked = Object.entries(S.locks).filter(([id, v]) => v && v !== "auto" && S.meds.some(m => m.id === id));
   if (locked.length) {
     h += `<section class="mine"><h3>Your choices (used for every plan)</h3><ul>${locked.map(([id, v]) => {
@@ -1037,14 +1080,13 @@ function renderResults(focusPlan) {
   }
   h += `<div class="filters no-print">
       <label class="choice"><input type="checkbox" id="v-all" ${V.all ? "checked" : ""}><span><b>Only show plans that cover all my medicines</b></span></label>
+      <label class="choice"><input type="checkbox" id="v-open" ${S.allOpen ? "checked" : ""}><span><b>Show the details for every plan</b><small>Otherwise, only the first plan's medicines and switches are shown until you open the others.</small></span></label>
       <div class="grid3">
-        <div class="field"><label for="v-type">Kind of plan</label><select id="v-type"><option value="">All plans</option><option value="PDP" ${V.type === "PDP" ? "selected" : ""}>Drug plans only (with Original Medicare)</option><option value="MA" ${V.type === "MA" ? "selected" : ""}>Medicare Advantage plans</option></select></div>
         <div class="field"><label for="v-sort">Put first</label><select id="v-sort"><option value="total">Lowest yearly cost</option><option value="asis" ${V.sort === "asis" ? "selected" : ""}>Lowest cost with no switches</option><option value="premium" ${V.sort === "premium" ? "selected" : ""}>Lowest monthly premium</option></select></div>
         <div class="field" style="align-self:end"><button type="button" class="btn ghost" id="print">Print these results</button></div>
       </div>
-      <details class="help"><summary>What's the difference between the kinds of plans?</summary><p class="hint"><b>Drug plan only</b> adds drug coverage to Original Medicare, and you keep seeing any doctor who takes Medicare. <b>Medicare Advantage</b> replaces Original Medicare and usually includes drug coverage, but you'll generally need to use the plan's doctors and hospitals.</p></details>
     </div>`;
-  if (!list.length) h += `<p class="notice">No plans match these choices.</p>`;
+  if (typed.length && !list.length) h += `<p class="notice">No plans match these choices.</p>`;
   h += `<ol class="plans">${list.slice(0, S.shown).map((r, i) => planHTML(r, max, i)).join("")}</ol>`;
   if (list.length > S.shown) h += `<button type="button" class="btn ghost no-print" id="more">Show ${Math.min(10, list.length - S.shown)} more plans (${list.length - S.shown} left)</button>`;
   $("#results").innerHTML = h;
@@ -1065,37 +1107,49 @@ function tagsFor(parts) {
 function planHTML(r, max, i) {
   const partial = r.unknown || r.noCost;
   const save = !partial && !r.asisUnknown && r.asisTotal - r.total >= 1 ? r.asisTotal - r.total : 0;
-  const meds = r.meds.map((m, k) => {
+  const open = S.planOpen[r.id] ?? (S.allOpen || i === 0);
+  const meds = r.meds.map(m => {
     const sw = m.pick.opt.kind !== "asis";
+    const orig = medTitle(m.mo.med);
     const openKey = r.id + "|" + m.mo.med.id;
-    const cost = m.total == null ? "Cost unknown" : fmtY(m.total) + " a year";
+    const cost = m.total == null ? "Cost unknown" : `${fmtY(m.total)} a year`;
+    const keepTotal = m.asis.total == null ? null : r.premium + m.asis.total;
     let body = "";
     if (sw) {
-      const was = m.asis.cost;
-      body = `<div class="pm-switch"><p><b>${m.locked ? "Your choice" : "Suggested switch"}:</b> ${esc(m.pick.opt.title)}</p>
-        <p class="why">${esc(KIND[m.pick.opt.kind])}. ${esc(KIND_NOTE[m.pick.opt.kind] || "")} ${was == null ? "" : `As prescribed it would be ${esc(fmtY(was))} a year${!m.asis.covered ? " (not covered by this plan)" : ""}.`}</p>
-        <div class="row no-print"><button type="button" class="btn small" data-act="asis" data-med="${m.mo.med.id}" data-plan="${esc(r.id)}">No thanks, keep my original</button><button type="button" class="btn small ghost" data-act="list" data-key="${esc(openKey)}">See other choices</button></div></div>`;
+      body = `<div class="pm-switch">
+        <p class="pm-instead"><b>${m.locked ? "Your choice" : "Suggested switch"}</b> instead of ${esc(orig)}, which you take now${m.asis.covered ? "" : " (this plan doesn't cover it)"}.</p>
+        ${m.saves != null && m.saves >= 0.5 ? `<p class="save-line">Saves ${esc(fmtY(m.saves))} a year on this plan</p>` : m.saves != null && m.saves <= -0.5 ? `<p class="pm-instead"><b>Costs ${esc(fmtY(-m.saves))} more a year on this plan</b> than ${esc(orig)}.</p>` : ""}
+        <p class="why">${esc(KIND[m.pick.opt.kind])}. ${esc(KIND_NOTE[m.pick.opt.kind] || "")}${keepTotal != null ? ` If you keep ${esc(orig)}, this plan would cost ${esc(fmtY(keepTotal))} for the year instead of ${esc(fmtY(r.total))}.` : ""}</p>
+        <div class="row no-print"><button type="button" class="btn small" data-act="asis" data-med="${m.mo.med.id}" data-plan="${esc(r.id)}">No thanks, keep my original</button><button type="button" class="btn small ghost" data-act="list" data-key="${esc(openKey)}" aria-expanded="${!!S.open[openKey]}">${S.open[openKey] ? "Hide other choices" : "See other choices"}</button></div></div>`;
     } else {
-      body = `<p class="pm-what">${esc(m.pick.opt.title)}${m.locked ? " · your choice" : ""}</p>${m.choices.length > 1 ? `<div class="row no-print"><button type="button" class="btn small ghost" data-act="list" data-key="${esc(openKey)}">See other choices</button></div>` : ""}`;
+      body = `<p class="pm-what">${esc(m.pick.opt.title)}${m.locked ? " · your choice" : ""}</p>${m.choices.length > 1 ? `<div class="row no-print"><button type="button" class="btn small ghost" data-act="list" data-key="${esc(openKey)}" aria-expanded="${!!S.open[openKey]}">${S.open[openKey] ? "Hide other choices" : "See other choices"}</button></div>` : ""}`;
     }
-    const open = S.open[openKey];
-    const lockId = S.locks[m.mo.med.id];
-    const choices = open ? `<ul class="opts">${m.choices.slice().sort((a, b) => (a.cost ?? 1e12) - (b.cost ?? 1e12)).map(c => {
-      const cur = c.opt.id === m.pick.opt.id;
-      return `<li class="opt${cur ? " current" : ""}"><span class="o-name">${esc(c.opt.title)}</span><span class="o-cost">${c.cost == null ? "—" : esc(fmtY(c.cost)) + "/yr"}</span>
-        <span class="o-kind">${esc(KIND[c.opt.kind])}${c.covered ? "" : " · not covered"}${c.extra ? " · needs extra approval" : ""}</span>
-        ${cur ? `<span class="hint">In use</span>` : `<button type="button" class="btn small ghost" data-act="use" data-opt="${esc(c.opt.id)}" data-med="${m.mo.med.id}" data-plan="${esc(r.id)}">Use this</button>`}</li>`;
-    }).join("")}</ul><p class="hint">Costs here are for this one medicine on this plan. Your choice is used for every plan.${lockId && lockId !== "auto" ? "" : ""}</p>` : "";
-    return `<li class="pm"><div class="pm-head"><span class="pm-name">${esc(medTitle(m.mo.med))}</span><span class="pm-cost">${esc(cost)}</span></div>
+    let choices = "";
+    if (S.open[openKey]) {
+      const rows = m.choices.filter(c => c.total != null || c === m.pick || c === m.asis).sort((a, b) => (a.total ?? 1e12) - (b.total ?? 1e12)).map(c => {
+        const cur = c === m.pick;
+        const planT = c.total == null ? null : r.premium + c.total;
+        const diff = c.total == null || r.unknown ? null : c.total - r.drugTotal;
+        const diffTxt = cur ? "This is what the plan total above uses" : diff == null ? "Price not available" : Math.abs(diff) < 0.5 ? "Same yearly total" : diff > 0 ? `${fmtY(diff)} more a year` : `${fmtY(-diff)} less a year`;
+        return `<li class="opt${cur ? " current" : ""}"><span class="o-name">${esc(c.opt.title)}${c.opt.kind === "asis" ? " (what you take now)" : ""}</span><span class="o-cost">${planT == null ? "—" : esc(fmtY(planT))}<small>plan total for the year</small></span>
+          <span class="o-kind">${esc(diffTxt)} · ${esc(KIND[c.opt.kind])}${c.covered ? "" : " · not covered"}${c.extra ? " · needs extra approval" : ""}</span>
+          ${cur ? "" : `<button type="button" class="btn small ghost" data-act="use" data-opt="${esc(c.opt.id)}" data-med="${m.mo.med.id}" data-plan="${esc(r.id)}">Use this</button>`}</li>`;
+      }).join("");
+      choices = `<ul class="opts">${rows}</ul><p class="hint">Each total is what this plan would cost you for the whole year, including the premium and your other medicines as shown. Your choice is used for every plan.</p>`;
+    }
+    return `<li class="pm"><div class="pm-head"><span class="pm-name">${sw ? '<span aria-hidden="true">→ </span>' : ""}${esc(sw ? m.pick.opt.title : orig)}</span><span class="pm-cost">${esc(cost)}<small>for this medicine</small></span></div>
       <div class="tags">${tagsFor(m.parts)}</div>${body}${choices}</li>`;
   }).join("");
   const pw = partial ? 0 : r.premium / max * 100, dw = partial ? 0 : r.drugTotal / max * 100;
   const months = !partial ? `<details class="months"><summary>Month-by-month costs</summary><div class="mtable"><table>
       <thead><tr><th scope="col">Medicine</th>${MONTHS.map(m => `<th scope="col">${m}</th>`).join("")}<th scope="col">Year</th></tr></thead>
-      <tbody>${r.meds.map(m => `<tr><td>${esc(medTitle(m.mo.med))}</td>${m.months.map(v => `<td>${fmt(v)}</td>`).join("")}<td>${fmtY(m.total)}</td></tr>`).join("")}
+      <tbody>${r.meds.map(m => `<tr><td>${esc(m.pick.opt.kind === "asis" ? medTitle(m.mo.med) : m.pick.opt.title)}</td>${m.months.map(v => `<td>${fmt(v)}</td>`).join("")}<td>${fmtY(m.total)}</td></tr>`).join("")}
       <tr><td>Premium</td>${MONTHS.map(() => `<td>${fmt(r.prem || 0)}</td>`).join("")}<td>${fmtY(r.premium)}</td></tr></tbody>
       <tfoot><tr><td>Total</td>${MONTHS.map((_, k) => `<td>${fmt(r.meds.reduce((t, m) => t + (m.months[k] || 0), 0) + (r.prem || 0))}</td>`).join("")}<td>${fmtY(r.total)}</td></tr></tfoot>
     </table></div></details>` : "";
+  const nc = r.meds.filter(m => m.parts.some(p => !p.info)).map(m => medTitle(m.mo.med));
+  const summary = (nc.length ? `<span class="nc">Doesn't cover: ${esc(nc.join(", "))}</span>` : `Covers all ${r.meds.length === 1 ? "of your medicine" : r.meds.length + " of your medicines"}`)
+    + (r.switched ? ` · ${r.switched} suggested switch${r.switched === 1 ? "" : "es"}` : "");
   const flash = S.flash && S.flash.plan === r.id ? `<p class="notice ok" role="status">${esc(S.flash.msg)}</p>` : "";
   return `<li class="plan${i === 0 && !partial ? " first" : ""}${partial ? " partial" : ""}" id="plan-${esc(r.id)}">${flash}
     <div class="p-top"><span class="rank" aria-label="Rank ${i + 1}">${i + 1}</span><h3 class="p-name">${esc(r.name)}</h3>
@@ -1105,7 +1159,9 @@ function planHTML(r, max, i) {
       ${save ? `<span class="save">Saves ${esc(money0.format(save))} compared with no switches (${esc(money0.format(r.asisTotal))})</span>` : ""}
       ${partial ? "" : `<div class="bar" aria-hidden="true"><i class="bp" style="width:${pw.toFixed(2)}%"></i><i class="bd" style="width:${dw.toFixed(2)}%"></i></div>`}</div>
     <div class="p-facts"><span>Monthly premium <b>${r.prem == null ? "—" : esc(fmt(r.prem))}</b></span><span>Yearly deductible <b>${r.ded == null ? "—" : esc(fmtY(r.ded))}</b></span>${r.hitCap ? `<span>Reaches the yearly limit</span>` : ""}</div>
-    <ul class="p-meds">${meds}</ul>${months}</li>`;
+    <p class="p-sum">${summary}</p>
+    <button type="button" class="btn ghost wide no-print" data-toggle="${esc(r.id)}" aria-expanded="${open}" aria-controls="det-${esc(r.id)}">${open ? "Hide medicine details" : "Show medicines and switches for this plan"}</button>
+    <div class="p-details" id="det-${esc(r.id)}" ${open ? "" : "hidden"}><ul class="p-meds">${meds}</ul>${months}</div></li>`;
 }
 
 /* ---------- Location ---------- */
@@ -1144,7 +1200,7 @@ async function fillCounties(keep) {
 /* ---------- Wiring ---------- */
 $("#f").addEventListener("submit", e => { e.preventDefault(); compare(true); });
 $("#year").addEventListener("change", async () => {
-  catalog = null; S.ctx = null;
+  catalog = null; S.ctx = null; S.yearChosen = true;
   $("#results").innerHTML = '<div class="ready"><p>Plan year changed. Press <b>Find my lowest-cost plans</b> to see plans for this year.</p></div>';
   fillStates($("#state").value);
   await fillCounties($("#county").value);
@@ -1159,6 +1215,7 @@ $("#year").addEventListener("change", async () => {
 $("#state").addEventListener("change", async () => { await fillCounties(""); save(); });
 $("#county").addEventListener("change", save);
 $$("input[name=pharm]").forEach(r => r.addEventListener("change", () => { save(); if (S.ctx) rank(); }));
+$$("input[name=ptype]").forEach(r => r.addEventListener("change", () => { save(); if (S.ctx && S.ctx.res) { S.shown = 10; renderResults(); } }));
 ["alt-same", "alt-class", "alt-past"].forEach(id => $("#" + id).addEventListener("change", () => { save(); if (S.ctx) compare(); }));
 $("#editor").addEventListener("change", e => {
   if (e.target.name === "ed-variant") { S.editing.variant = e.target.value; S.editing.rx = null; S.editing.qty = null; renderEditor(); }
@@ -1185,14 +1242,23 @@ $("#meds").addEventListener("click", async e => {
 $("#results").addEventListener("change", e => {
   const V = viewFilters();
   if (e.target.id === "v-all") V.all = e.target.checked;
-  else if (e.target.id === "v-type") V.type = e.target.value;
   else if (e.target.id === "v-sort") V.sort = e.target.value;
+  else if (e.target.id === "v-open") { S.allOpen = e.target.checked; S.planOpen = {}; try { localStorage.setItem("formulary-finder.allopen", S.allOpen ? "1" : ""); } catch (err) {} }
   else return;
   S.shown = 10; renderResults();
 });
 $("#results").addEventListener("click", e => {
   if (e.target.id === "more") { S.shown += 10; renderResults(); return; }
   if (e.target.id === "print") { window.print(); return; }
+  if (e.target.id === "chg-kind") { const st = $("#step-kind"); if (st.scrollIntoView) st.scrollIntoView({ behavior: "smooth", block: "start" }); const r = $("input[name=ptype]:checked"); if (r) r.focus(); return; }
+  const tg = e.target.closest("[data-toggle]");
+  if (tg) {
+    const id = tg.dataset.toggle;
+    S.planOpen[id] = tg.getAttribute("aria-expanded") !== "true";
+    renderResults();
+    const again = document.querySelector(`[data-toggle="${CSS.escape(id)}"]`); if (again) again.focus();
+    return;
+  }
   const un = e.target.closest("[data-unlock]");
   if (un) { delete S.locks[un.dataset.unlock]; save(); rank(); return; }
   const b = e.target.closest("[data-act]");
@@ -1200,6 +1266,7 @@ $("#results").addEventListener("click", e => {
   if (b.dataset.act === "list") { S.open[b.dataset.key] = !S.open[b.dataset.key]; renderResults(); const el = document.querySelector(`[data-key="${CSS.escape(b.dataset.key)}"]`); if (el) el.focus(); return; }
   if (b.dataset.act === "asis" || b.dataset.act === "use") {
     S.locks[b.dataset.med] = b.dataset.act === "asis" ? "asis" : b.dataset.opt;
+    S.planOpen[b.dataset.plan] = true;
     const m = S.meds.find(x => x.id === b.dataset.med);
     S.flash = { plan: b.dataset.plan, msg: `Updated: ${m ? medTitle(m) : "this medicine"} ${b.dataset.act === "asis" ? "stays as prescribed" : "uses your choice"} for every plan. Totals and the order of plans have been recalculated.` };
     save();
@@ -1213,8 +1280,13 @@ renderMeds();
   if (!(await loadIndex())) return;
   const saved = loadSaved();
   const years = (S.index.years || []).map(y => String(y.year));
-  const cy = String(new Date().getFullYear());
-  $("#year").value = saved && years.includes(saved.year) ? saved.year : years.includes(cy) ? cy : years[years.length - 1];
+  // From October 15 (the start of open enrollment) people are choosing next year's plan
+  const now = new Date(), cy = now.getFullYear();
+  const enrolling = now.getMonth() > 9 || (now.getMonth() === 9 && now.getDate() >= 15);
+  const def = enrolling && years.includes(String(cy + 1)) ? String(cy + 1) : years.includes(String(cy)) ? String(cy) : years[years.length - 1];
+  S.yearChosen = !!(saved && saved.yearChosen && years.includes(saved.year));
+  $("#year").value = S.yearChosen ? saved.year : def;
+  if (saved && saved.ptype != null) { const r = $(`input[name=ptype][value="${saved.ptype}"]`); if (r) r.checked = true; }
   fillStates(saved && saved.state);
   await fillCounties(saved && saved.county);
   if (saved) {

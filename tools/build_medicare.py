@@ -521,8 +521,15 @@ phosphate hydrobromide aspartate saccharate dipropionate bitartrate dimesylate c
 oxalate valerate benzoate hyclate monosodium disodium anhydrous hydrate pamoate tosylate napsylate""".split())
 
 
+APP_PREFIX = re.compile(r"^((?:NDA|BLA|ANDA)\d+)\s+")
+
+
 def split_name(name):
-    """Split an RxNorm clinical drug name into (brand, quantity, ingredients, strengths, dose form)."""
+    """Split an RxNorm clinical drug name into (brand, quantity, ingredients, strengths, dose form).
+
+    Some products (mostly inhalers that can't be swapped for each other) start with the FDA
+    application number, e.g. "NDA020503 200 ACTUAT albuterol ...". That prefix is skipped here."""
+    name = APP_PREFIX.sub("", name)
     brand = ""
     m = re.search(r"\s*\[([^\]]+)\]\s*$", name)
     if m:
@@ -559,7 +566,11 @@ def base_ingredient(ing):
 
 
 def make_label(name):
-    """Reorder an RxNorm name so ingredients come first: 'a / b 1 MG / 2 MG Oral Tablet [Brand]'."""
+    """Reorder an RxNorm name so ingredients come first: 'a / b 1 MG / 2 MG Oral Tablet [Brand]'.
+    A leading FDA application number stays at the front so look-alike products stay distinct."""
+    am = APP_PREFIX.match(name)
+    if am:
+        return am.group(1) + " " + make_label(name[am.end():])
     full = name
     brand, qty, ings, strengths, rest = split_name(name)
     if ings is None or len(ings) < 2:
