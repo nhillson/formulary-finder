@@ -216,8 +216,18 @@ details.months summary,details.checked summary,details.help summary{cursor:point
 .side h2{margin:0;font-family:var(--display);font-weight:700;font-size:1.3rem}
 .side ul{margin:0;padding-left:1.3rem;display:grid;gap:.5rem;max-width:44em;color:var(--ink-2)}
 footer p{margin:0;font-size:.92rem;color:var(--ink-2);max-width:48em}
+
+/* Buy Me a Coffee widget (loaded with the first results). It sits just right of the results column when
+   the window has room, otherwise in the bottom-right corner, and hides while the results are scrolled away.
+   % here is the window width, since the widget's parts are position:fixed. */
+#bmc-wbtn,#bmc-wbtn + div,#bmc-iframe{--bmc-r:max(18px,calc((100% - 62rem) / 2 - 68px))}
+#bmc-wbtn{right:var(--bmc-r)!important}
+#bmc-wbtn + div{right:calc(var(--bmc-r) + 84px)!important}
+@media (min-width:480px){#bmc-iframe{right:var(--bmc-r)!important}}
+#bmc-wbtn:focus-visible{outline:3px solid var(--rx);outline-offset:3px}
+html.bmc-away #bmc-wbtn,html.bmc-away #bmc-wbtn + div{opacity:0!important;visibility:hidden!important;pointer-events:none}
 @media print{
-  .no-print,.steps,.bar-top,.sizes,.filters,.btn,details.months,details.checked,.side{display:none!important}
+  .no-print,.steps,.bar-top,.sizes,.filters,.btn,details.months,details.checked,.side,#bmc-wbtn,#bmc-wbtn + div,#bmc-iframe{display:none!important}
   html{font-size:100%}
   body{background:#fff;color:#000}
   .plan{break-inside:avoid;border:1px solid #999}
@@ -1092,6 +1102,7 @@ function renderResults(focusPlan) {
   $("#results").innerHTML = h;
   if (focusPlan) { const el = document.getElementById("plan-" + focusPlan); if (el && el.scrollIntoView) el.scrollIntoView({ block: "start" }); }
   S.flash = null;
+  supportTick();
 }
 function tagsFor(parts) {
   const tags = [];
@@ -1196,6 +1207,52 @@ async function fillCounties(keep) {
     sel.disabled = false;
   } catch (e) { sel.innerHTML = '<option value="">Couldn\'t load counties</option>'; }
 }
+
+/* ---------- Buy Me a Coffee widget ---------- */
+// Settings from buymeacoffee.com. The widget only draws itself on page load, so it's added the first time
+// results are on screen (its "Did I save you a bundle?" message then shows next to them), and a load event
+// is replayed for it. It's shown only while the results are beside it.
+const BMC = { name: "BMC-Widget", cfasync: "false", id: "nickhillson", description: "Support me on Buy me a coffee!",
+  message: "Did I save you a bundle? Buy me a coffee :)", color: "#40DCA5", position: "Right", x_margin: "18", y_margin: "18" };
+let bmcState = "", bmcFrame = 0;
+function loadSupport() {
+  bmcState = "loading";
+  const s = document.createElement("script");
+  Object.entries(BMC).forEach(([k, v]) => s.setAttribute("data-" + k, v));
+  s.onload = () => {
+    try { window.dispatchEvent(new Event("DOMContentLoaded")); } catch (e) {}
+    const b = document.getElementById("bmc-wbtn");
+    bmcState = b ? "ready" : "failed";
+    if (!b) return;
+    // The widget's button is a plain div; make it reachable and usable from the keyboard
+    b.setAttribute("role", "button"); b.tabIndex = 0; b.setAttribute("aria-label", "Buy me a coffee (opens a support page)");
+    b.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); b.click(); } });
+    document.addEventListener("keydown", e => {
+      const f = document.getElementById("bmc-iframe");
+      if (e.key === "Escape" && f && f.style.opacity === "1" && f.parentElement) { f.parentElement.click(); b.focus(); }
+    });
+    supportTick();
+  };
+  s.onerror = () => { bmcState = "failed"; };   // e.g. blocked by an ad blocker
+  s.src = "https://cdnjs.buymeacoffee.com/1.0.0/widget.prod.min.js";
+  document.body.appendChild(s);
+}
+function supportTick() {
+  if (bmcFrame) return;
+  bmcFrame = requestAnimationFrame(() => {
+    bmcFrame = 0;
+    const res = $("#results"), line = window.innerHeight - 50;   // the button's middle
+    const r = res.getBoundingClientRect();
+    const beside = !!res.querySelector(".rhead") && r.top < line && r.bottom > line;
+    const f = document.getElementById("bmc-iframe");
+    const popupOpen = !!(f && f.style.opacity === "1");
+    document.documentElement.classList.toggle("bmc-away", !beside && !popupOpen);
+    if (beside && !bmcState) loadSupport();
+  });
+}
+window.addEventListener("scroll", supportTick, { passive: true });
+window.addEventListener("resize", supportTick);
+if (typeof ResizeObserver === "function") new ResizeObserver(supportTick).observe($("#results"));
 
 /* ---------- Wiring ---------- */
 $("#f").addEventListener("submit", e => { e.preventDefault(); compare(true); });
