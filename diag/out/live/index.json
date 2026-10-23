@@ -1,5 +1,5 @@
 {
- "generated": "2026-10-23T02:59:48+00:00",
+ "generated": "2026-10-23T19:46:37+00:00",
  "source": "CMS Part D formulary, cost sharing and pricing public use files; drug names from NLM RxNorm",
  "medications": {
   "generics": 4286,
@@ -77,7 +77,8 @@
    "prices": {
     "year": 2026,
     "release": "20261007",
-    "own": true
+    "own": true,
+    "negotiated": 0
    },
    "qa": {
     "pdp": 367,
@@ -160,6 +161,7 @@
     "withPriceTable": 5496,
     "priceTables": 3478,
     "drugsWithAvgPrice": 6170,
+    "drugsWithNegotiatedPrice": 0,
     "countyLimitedPlans": 5101,
     "sampleCostSharing": [
      [
@@ -208,14 +210,14 @@
        [
         2,
         0.25,
-        0.0,
-        0.0
+        null,
+        null
        ],
        [
         2,
         0.25,
-        0.0,
-        0.0
+        null,
+        null
        ]
       ]
      ]
@@ -260,7 +262,8 @@
    "prices": {
     "year": 2026,
     "release": "20261007",
-    "own": false
+    "own": false,
+    "negotiated": 92
    },
    "qa": {
     "pdp": 323,
@@ -342,6 +345,7 @@
     "withPriceTable": 0,
     "priceTables": 0,
     "drugsWithAvgPrice": 5637,
+    "drugsWithNegotiatedPrice": 92,
     "countyLimitedPlans": 5145,
     "sampleCostSharing": [
      [
@@ -390,14 +394,14 @@
        [
         2,
         0.17,
-        0.0,
-        0.0
+        null,
+        null
        ],
        [
         2,
         0.17,
-        0.0,
-        0.0
+        null,
+        null
        ]
       ]
      ]

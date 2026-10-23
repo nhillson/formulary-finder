@@ -1,0 +1,8 @@
+prices: {"year":2026,"release":"20261007","own":false,"negotiated":92}
+items: atorvastatin 80 MG Oral Tablet a=0.1515 n=0 | verapamil hydrochloride 180 MG Extended Release Oral Tablet a=0.3295 n=0 | semaglutide 4 MG Oral Tablet [Wegovy] a=12.8545 n=1
+S4802-158 Wellcare Value Script (PDP) pharmacy=preferred: drugs $1681.91 + premiums $63.60 = $1745.51; per drug 0.00, 0.00, 1681.91
+S4802-158 Wellcare Value Script (PDP) pharmacy=standard: drugs $1855.07 + premiums $63.60 = $1918.67; per drug 54.54, 118.62, 1681.91
+S5884-145 Humana Basic Rx Plan (PDP) pharmacy=preferred: drugs $1709.12 + premiums $219.60 = $1928.72; per drug 19.09, 29.77, 1660.26
+S5884-145 Humana Basic Rx Plan (PDP) pharmacy=standard: drugs $1709.12 + premiums $219.60 = $1928.72; per drug 19.09, 29.77, 1660.26
+S5884-204 Humana Value Rx Plan (PDP) pharmacy=preferred: drugs $1475.12 + premiums $399.60 = $1874.72; per drug 0.00, 0.00, 1475.12
+S5884-204 Humana Value Rx Plan (PDP) pharmacy=standard: drugs $1535.12 + premiums $399.60 = $1934.72; per drug 12.00, 48.00, 1475.12
