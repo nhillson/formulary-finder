@@ -522,14 +522,34 @@ oxalate valerate benzoate hyclate monosodium disodium anhydrous hydrate pamoate 
 
 
 APP_PREFIX = re.compile(r"^((?:NDA|BLA|ANDA)\d+)\s+")
+# RxNorm puts a word in front of some names, e.g. "Abuse-Deterrent 12 HR oxycodone ..." or "Once-Daily gabapentin ...".
+# Keep in step with TAG_WORDS in index.html.
+TAG_WORDS = ("Abuse-Deterrent|Osmotic|Sprinkle|Modified|Smoking Cessation|Breath-Actuated|BX Rating|Pediatric|Niacinamide|Augmented|Once-Daily|"
+             "Twice-Daily|Microencapsulated|Preservative-Free|PMDD|Pulmonary Hypertension|Atrial Fibrillation|Hyponatremia|Emollient|Sugar-Free|Soft Gelatin")
+TAG_PREFIX = re.compile(r"^(" + TAG_WORDS + r")\s+(?=[a-z\d])")
+TAG_ANY = re.compile(r"^([A-Z][A-Za-z-]*(?: [A-Z][A-Za-z-]*)*)\s+(?=\d)")
+
+
+def strip_prefix(name):
+    """Remove a leading FDA application number and/or version word. Returns (prefix text, rest)."""
+    pre = []
+    m = APP_PREFIX.match(name)
+    if m:
+        pre.append(m.group(1))
+        name = name[m.end():]
+    m = TAG_PREFIX.match(name) or TAG_ANY.match(name)
+    if m:
+        pre.append(m.group(1))
+        name = name[m.end():]
+    return " ".join(pre), name
 
 
 def split_name(name):
     """Split an RxNorm clinical drug name into (brand, quantity, ingredients, strengths, dose form).
 
-    Some products (mostly inhalers that can't be swapped for each other) start with the FDA
-    application number, e.g. "NDA020503 200 ACTUAT albuterol ...". That prefix is skipped here."""
-    name = APP_PREFIX.sub("", name)
+    Some products start with the FDA application number ("NDA020503 200 ACTUAT albuterol ...") or a
+    version word ("Abuse-Deterrent 12 HR oxycodone ..."). That prefix is skipped here."""
+    name = strip_prefix(name)[1]
     brand = ""
     m = re.search(r"\s*\[([^\]]+)\]\s*$", name)
     if m:
@@ -567,10 +587,10 @@ def base_ingredient(ing):
 
 def make_label(name):
     """Reorder an RxNorm name so ingredients come first: 'a / b 1 MG / 2 MG Oral Tablet [Brand]'.
-    A leading FDA application number stays at the front so look-alike products stay distinct."""
-    am = APP_PREFIX.match(name)
-    if am:
-        return am.group(1) + " " + make_label(name[am.end():])
+    A leading FDA application number or version word stays at the front so look-alike products stay distinct."""
+    pre, rest = strip_prefix(name)
+    if pre:
+        return pre + " " + make_label(rest)
     full = name
     brand, qty, ings, strengths, rest = split_name(name)
     if ings is None or len(ings) < 2:

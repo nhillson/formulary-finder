@@ -203,6 +203,7 @@ input:focus-visible,select:focus-visible,button:focus-visible,summary:focus-visi
 .opt .o-kind{grid-column:1;font-size:.9rem;color:var(--ink-2)}
 .opt .o-cost{grid-column:2;grid-row:1;text-align:right;font-weight:700;font-variant-numeric:tabular-nums}
 .opt .btn{grid-column:2;grid-row:2;justify-self:end}
+.opt .o-note{grid-column:1/-1;font-size:.9rem;color:var(--warn);font-weight:600}
 details.months summary,details.checked summary,details.help summary{cursor:pointer;color:var(--rx);font-weight:700;min-height:2.4rem;display:flex;align-items:center}
 .mtable{overflow-x:auto;margin-top:.5rem}
 .mtable table{border-collapse:collapse;font-size:.9rem;font-variant-numeric:tabular-nums;min-width:44rem;width:100%}
@@ -402,36 +403,80 @@ try { const z = localStorage.getItem("formulary-finder.size"); if (z) setSize(+z
 const SALTS = new Set(("hydrochloride hcl sodium potassium calcium magnesium sulfate maleate besylate succinate tartrate mesylate acetate bromide " +
   "xinafoate propionate furoate fumarate dihydrate monohydrate trihydrate hemihydrate citrate phosphate hydrobromide aspartate saccharate " +
   "dipropionate bitartrate dimesylate chloride carbonate gluconate lactate oxalate valerate benzoate hyclate anhydrous hydrate pamoate tosylate napsylate").split(" "));
+const dropSuffix = x => x.replace(/-[a-z]{4}$/, "");  // biosimilar suffixes, e.g. "adalimumab-adaz"
 function baseIng(text) {
-  const w = String(text).toLowerCase().replace(/,/g, " ").split(/\s+/).filter(Boolean).map(x => x.replace(/-[a-z]{4}$/, ""));
+  const w = String(text).toLowerCase().replace(/,/g, " ").split(/\s+/).filter(Boolean).map(dropSuffix);
   const kept = w.filter(x => !SALTS.has(x));
   return (kept.length ? kept : w).join(" ");
 }
 const ingKeyOf = names => names.map(baseIng).filter(Boolean).sort().join("+");
+// Like ingKeyOf but keeps the salt, so different salts of one medicine stay apart
+const saltKeyOf = names => names.map(n => String(n).toLowerCase().replace(/,/g, " ").split(/\s+/).filter(Boolean).map(dropSuffix).join(" ")).filter(Boolean).sort().join("+");
+/* RxNorm puts a word in front of some names, e.g. "Abuse-Deterrent 12 HR oxycodone ..." or "Once-Daily gabapentin ...".
+   Read it as a label for that version, the same way as an FDA application number. */
+const TAG_WORDS = "Abuse-Deterrent|Osmotic|Sprinkle|Modified|Smoking Cessation|Breath-Actuated|BX Rating|Pediatric|Niacinamide|Augmented|Once-Daily|Twice-Daily|" +
+  "Microencapsulated|Preservative-Free|PMDD|Pulmonary Hypertension|Atrial Fibrillation|Hyponatremia|Emollient|Sugar-Free|Soft Gelatin";
+const TAG_RE = new RegExp("^(" + TAG_WORDS + ")\\s+(?=[a-z\\d])");
+const TAG_ANY = /^([A-Z][A-Za-z-]*(?: [A-Z][A-Za-z-]*)*)\s+(?=\d)/;  // an unlisted word followed by a number
+// Where the strength starts: a number followed by a unit (so "glycol 3350 / ..." and "alpha 1-proteinase" stay part of the name)
+const STRENGTH_AT = /\s(?=\d[\d.,]*\s*[A-Z%])/;
+// Pack parts use RxNorm's raw order ("a 1 MG / b 2 MG Oral Tablet"); reorder to "a / b 1 MG / 2 MG Oral Tablet" like the other names
+function rawToLabel(t) {
+  t = t.replace(/\s*\[[^\]]+\]\s*$/, "").replace(/^([\d.]+ ML)\)\s*\(/, "$1 ");
+  const qm = t.match(/^(\d[\d.,]*\s+[A-Z][A-Z/]*)\s+(?=[a-z])/);
+  const body = qm ? t.slice(qm[0].length) : t;
+  const ings = [], sts = [];
+  let form = "";
+  for (const part of body.split(" / ")) {
+    const m = part.match(/^(.*?)\s(\d[\d.,]*\s*[A-Z%][A-Za-z%/]*)(?:\s+(.*))?$/);
+    if (!m) return t;
+    ings.push(m[1]); sts.push(m[2]); if (m[3]) form = m[3];
+  }
+  return (qm ? qm[1] + " " : "") + ings.join(" / ") + " " + sts.join(" / ") + (form ? " " + form : "");
+}
+function splitPack(base, brand) {
+  // "{21 (ethinyl estradiol 0.035 MG / norgestimate 0.25 MG Oral Tablet) / 7 (inert ingredients 1 MG Oral Tablet) } Pack"
+  const inner = base.replace(/^\{\s*/, "").replace(/\s*\}\s*Pack\s*$/i, "");
+  const parts = inner.split(/\)\s*\/\s*(?=\d+\s*\()/).map(x => x.trim().replace(/\)$/, ""));
+  const comps = parts.map(x => { const m = x.match(/^(\d+)\s*\((.*)$/); return m ? { n: m[1], p: splitLabel(rawToLabel(m[2])) } : null; });
+  if (!comps.length || comps.some(c => !c || !c.p.ingText || c.p.pack)) return null;
+  const active = comps.filter(c => !/^inert ingredients?$/i.test(c.p.ingText));
+  if (!active.length) return null;
+  const names = [...new Set(active.flatMap(c => c.p.ingText.split(" / ")))];
+  const variant = active[0].p.variant + " pack: " + comps.map(c => c.n + " × " + (active.includes(c) ? c.p.strength : "inactive")).join(" + ");
+  return { base, app: "", tag: "", brand, ingText: names.join(" / "), ingKey: ingKeyOf(names), saltKey: saltKeyOf(names), strength: "", doseForm: active[0].p.doseForm,
+    qty: "", variant, pack: true };
+}
 function splitLabel(label) {
   const bm = label.match(/\s*\[([^\]]+)\]\s*$/);
   const base = bm ? label.slice(0, bm.index) : label;
+  const brand = bm ? bm[1] : "";
+  if (base.startsWith("{")) { const pk = splitPack(base, brand); if (pk) return pk; }
   // Some products (mostly inhalers that can't be swapped for each other) start with an FDA application number
   const am = base.match(/^((?:NDA|BLA|ANDA)\d+)\s+/);
   const app = am ? am[1] : "";
-  const core = am ? base.slice(am[0].length) : base;
+  let core = am ? base.slice(am[0].length) : base;
+  const tm = core.match(TAG_RE) || core.match(TAG_ANY);
+  const tag = tm ? tm[1] : "";
+  if (tm) core = core.slice(tm[0].length);
   const qm = core.match(/^(\d[\d.,]*\s+[A-Z][A-Z/]*)\s+(?=[a-z])/);
   const s = qm ? core.slice(qm[0].length) : core;
-  const m = s.match(/\s(?=\d)/);
+  const m = s.match(STRENGTH_AT) || s.match(/\s(?=\d)/);
   const ingText = m ? s.slice(0, m.index) : s.split(/\s(?=[A-Z])/)[0];
   const rest = m ? s.slice(m.index + 1) : s.slice(ingText.length).trim();
   const sm = rest.match(/^\d[\d.,]*\s*[A-Z%][A-Z%/]*(?:\s*\/\s*\d[\d.,]*\s*[A-Z%][A-Z%/]*)*/);
   const strength = sm ? sm[0].replace(/\s+/g, " ") : "";
   const doseForm = (sm ? rest.slice(sm[0].length) : rest).trim();
   const qty = qm ? qm[1] : "";
-  const variant = (/^\d+ HR$/.test(qty) ? qty + " " : "") + doseForm;
-  return { base, app, brand: bm ? bm[1] : "", ingText, ingKey: ingKeyOf(ingText.split(" / ")), strength, doseForm, qty, variant: variant || "other" };
+  const variant = ((/^\d+ HR$/.test(qty) ? qty + " " : "") + doseForm || "other") + (tag ? ` (${tag})` : "");
+  const names = ingText.split(" / ");
+  return { base, app, tag, brand, ingText, ingKey: ingKeyOf(names), saltKey: saltKeyOf(names), strength, doseForm, qty, variant };
 }
 function formGroup(label) {
   const l = label.toLowerCase();
   if (/nasal/.test(l)) return "nasal";
   if (/inhalation solution|inhalation suspension|nebuliz/.test(l)) return "neb";
-  if (/inhal|actuat/.test(l)) return "inhaler";
+  if (/inhal/.test(l)) return "inhaler";
   if (/ophthalmic/.test(l)) return "eye";
   if (/otic/.test(l)) return "ear";
   if (/patch|transdermal system/.test(l)) return "patch";
@@ -441,6 +486,7 @@ function formGroup(label) {
   if (/cream|ointment|\bgel\b|lotion|foam|topical|shampoo/.test(l)) return "topical";
   if (/oral solution|oral suspension|syrup|elixir|oral liquid|oral drops/.test(l)) return "oral-liquid";
   if (/tablet|capsule|pill|lozenge|troche|chewable|disintegrating|film|granule/.test(l)) return "oral-solid";
+  if (/actuat/.test(l) && !/spray/.test(l)) return "inhaler";
   return "other";
 }
 function plainStrength(st) {
@@ -448,10 +494,14 @@ function plainStrength(st) {
     .replace(/MG\/ML/g, "mg per mL").replace(/MCG\/ML/g, "mcg per mL").replace(/MG\/HR/g, "mg per hour").replace(/\bMG\b/g, "mg").replace(/\bMCG\b/g, "mcg")
     .replace(/\bML\b/g, "mL").replace(/\bUNT\b/g, "units").replace(/\bMEQ\b/g, "mEq");
 }
+const TAG_PLAIN = { "bx rating": "BX-rated: not rated the same as Concerta", pmdd: "for PMDD", "smoking cessation": "for quitting smoking", modified: "modified-release",
+  "pulmonary hypertension": "for pulmonary hypertension", "atrial fibrillation": "for atrial fibrillation", hyponatremia: "for low blood sodium",
+  niacinamide: "with niacinamide", "soft gelatin": "soft gel" };
 function plainVariant(v) {
   let t = v.replace(/^(\d+) HR\s*/, (_, h) => h + "-hour ").toLowerCase()
     .replace(/\boral\b\s*/g, "").replace(/extended release/g, "extended-release").replace(/delayed release/g, "delayed-release")
-    .replace(/disintegrating tablet/g, "dissolving tablet").replace(/(\d[\d.]*) actuat\b/g, "$1 puffs").replace(/(\d[\d.]*) g\b/g, "$1 grams").replace(/\s+/g, " ").trim();
+    .replace(/disintegrating tablet/g, "dissolving tablet").replace(/(\d[\d.]*) actuat\b/g, "$1 puffs").replace(/(\d[\d.]*) g\b/g, "$1 grams")
+    .replace(/\(([a-z -]+)\)/g, (m0, w) => "(" + (TAG_PLAIN[w] || w) + ")").replace(/\s+/g, " ").trim();
   return t || "other form";
 }
 const unitWord = u => ({ MG: "mg", MCG: "mcg", G: "g", MEQ: "mEq", UNT: "units" }[u] || u.toLowerCase());
@@ -477,8 +527,15 @@ async function ensureCatalog() {
   for (const rx0 of S.years[y].rx) {
     const rx = String(rx0), label = S.names[rx] || "RxCUI " + rx;
     const p = splitLabel(label);
-    const e = { rx, label, ...p, form: formGroup(label), num: parseStrength(p.strength) };
-    list.push(e); byRx.set(rx, e);
+    list.push({ rx, label, ...p, form: formGroup(label), num: p.pack ? null : parseStrength(p.strength) });
+  }
+  // When one form comes in different salts (naproxen and naproxen sodium tablets), keep them as separate kinds
+  const salts = new Map();
+  for (const e of list) { const k = e.ingKey + "|" + e.variant; if (!salts.has(k)) salts.set(k, new Set()); salts.get(k).add(e.saltKey); }
+  for (const e of list) if (salts.get(e.ingKey + "|" + e.variant).size > 1) e.variant += " · " + e.ingText.toLowerCase();
+  for (const e of list) {
+    const rx = e.rx;
+    byRx.set(rx, e);
     if (!byBase.has(e.base)) byBase.set(e.base, []); byBase.get(e.base).push(e);
     if (!byIng.has(e.ingKey)) byIng.set(e.ingKey, []); byIng.get(e.ingKey).push(e);
     let d = drugs.get(e.ingKey);
@@ -494,6 +551,16 @@ async function ensureCatalog() {
   }
   terms.forEach(t => { t.words = t.nl.split(" "); t.ph = phon(t.text); });
   catalog = { year: y, list, byRx, byBase, byIng, drugs, terms };
+  // Medicines saved before a kind was split up (for example by salt) move to the matching new kind
+  for (const m of S.meds || []) {
+    const d = drugs.get(m.key);
+    if (!d || d.variants.has(m.variant)) continue;
+    const byRxV = m.rx && byRx.get(String(m.rx));
+    const cands = [...d.variants.keys()].filter(v => v.startsWith(m.variant + " · ") || v.startsWith(m.variant + " ("));
+    const pick = byRxV && d.variants.has(byRxV.variant) ? byRxV.variant
+      : cands.find(v => m.brand && d.variants.get(v).some(e => e.brand === m.brand)) || cands.find(v => !v.includes(" (")) || cands[0];
+    if (pick) m.variant = pick;
+  }
   return catalog;
 }
 const normWords = s => String(s || "").toLowerCase().replace(/[\/\-]/g, " ").replace(/[^a-z0-9. ]/g, " ").replace(/\s+/g, " ").trim();
@@ -796,6 +863,18 @@ function pickStrengths(prods, n) {
   return sorted.slice(from, from + n);
 }
 const isInsulin = e => /\binsulin\b/i.test(e.label);
+/* Products with the same name in RxNorm that a pharmacy still can't swap for each other. Each listed brand is its own product;
+   any two versions where one is listed (and they aren't the same listed brand) need a new prescription to switch. */
+const OWN_PRODUCT = ["Basaglar", "Admelog", "Novolin", "Zepbound", "Bonsity", "Phyrago", "Torpenz", "InnoPran", "Equetro", "Erzofri", "Vabrinty",
+  "Cortrophin", "Zomacton", "Berinert", "Gammagard ERC", "Gammagard", "Gammaplex", "Gammaked", "Gamunex", "Bivigam", "Privigen"];
+const SWAP_NOTE = { Zepbound: "Mounjaro and Zepbound are the same drug, but Medicare drug plans cover them for different uses, so one can't simply replace the other." };
+const ownProduct = b => (b && OWN_PRODUCT.find(r => b === r || b.startsWith(r + " "))) || "";
+function swapNote(b0, b1, ing) {
+  const r0 = ownProduct(b0), r1 = ownProduct(b1);
+  if ((!r0 && !r1) || r0 === r1) return "";
+  const nm = b => b || "generic " + ing;
+  return SWAP_NOTE[r0] || SWAP_NOTE[r1] || `${nm(b0)} and ${nm(b1)} are different products with the same name, so the pharmacy can't swap one for the other without a new prescription.`;
+}
 /* An option is a way to fill one medicine: a list of products with amounts per 30 days. */
 async function buildOptions(m, opts, notes) {
   const d = catalog.drugs.get(m.key);
@@ -825,17 +904,26 @@ async function buildOptions(m, opts, notes) {
     asis = mk(combos[0], ver0, "asis");
     combos.forEach((c, i) => versionsOf(c).forEach(v => {
       if (i === 0 && v === ver0) return;
-      if (!opts.same) return;
-      out.push(mk(c, v, i === 0 ? "same" : "strength"));
+      const note = swapNote(ver0, v, d.name);
+      if (note ? !opts.cls : !opts.same) return;
+      const o = mk(c, v, note ? "ingr" : i === 0 ? "same" : "strength");
+      if (note) o.note = note;
+      out.push(o);
     }));
   } else {
     const e0 = catalog.byRx.get(m.rx);
     if (!e0) return null;
     asis = { id: "asis", kind: "asis", title: niceName(e0), items: [{ rx: e0.rx, label: e0.label, qty: m.qty, insulin: isInsulin(e0) }] };
-    if (opts.same) for (const e of (catalog.byBase.get(e0.base) || [])) if (e.rx !== e0.rx)
-      out.push({ id: "p:" + e.rx, kind: "same", title: niceName(e), items: [{ rx: e.rx, label: e.label, qty: m.qty, insulin: isInsulin(e) }] });
-    if (opts.cls) for (const e of (catalog.byIng.get(e0.ingKey) || [])) if (e.base !== e0.base && e.form === e0.form && e.strength === e0.strength)
-      out.push({ id: "p:" + e.rx, kind: "ingr", title: niceName(e), items: [{ rx: e.rx, label: e.label, qty: m.qty, insulin: isInsulin(e) }] });
+    for (const e of (catalog.byBase.get(e0.base) || [])) {
+      if (e.rx === e0.rx) continue;
+      const note = swapNote(e0.brand, e.brand, d.name);
+      if (note ? !opts.cls : !opts.same) continue;
+      out.push({ id: "p:" + e.rx, kind: note ? "ingr" : "same", note: note || undefined, title: niceName(e), items: [{ rx: e.rx, label: e.label, qty: m.qty, insulin: isInsulin(e) }] });
+    }
+    // Same ingredient, different product: same salt, form and strength, and the same kind of version (not a pack)
+    if (opts.cls && !e0.pack) for (const e of (catalog.byIng.get(e0.ingKey) || []))
+      if (e.base !== e0.base && e.form === e0.form && e.strength === e0.strength && e.saltKey === e0.saltKey && e.tag === e0.tag && !e.pack)
+        out.push({ id: "p:" + e.rx, kind: "ingr", title: niceName(e), items: [{ rx: e.rx, label: e.label, qty: m.qty, insulin: isInsulin(e) }] });
   }
   asis.id = "asis"; asis.kind = "asis";
   const form0 = prods[0].form;
@@ -844,7 +932,7 @@ async function buildOptions(m, opts, notes) {
     const seen = new Set([m.key]);
     const add = (key, label, cls) => {
       if (seen.has(key)) return; seen.add(key);
-      let ps = (catalog.byIng.get(key) || []).filter(e => e.form === form0);
+      let ps = (catalog.byIng.get(key) || []).filter(e => e.form === form0 && !e.pack);
       if (!ps.length) return;
       const gens = ps.filter(e => !e.brand);
       ps = pickStrengths(gens.length ? gens : ps, 3);
@@ -1131,7 +1219,7 @@ function planHTML(r, max, i) {
       body = `<div class="pm-switch">
         <p class="pm-instead"><b>${m.locked ? "Your choice" : "Suggested switch"}</b> instead of ${esc(orig)}, which you take now${m.asis.covered ? "" : " (this plan doesn't cover it)"}.</p>
         ${m.saves != null && m.saves >= 0.5 ? `<p class="save-line">Saves ${esc(fmtY(m.saves))} a year on this plan</p>` : m.saves != null && m.saves <= -0.5 ? `<p class="pm-instead"><b>Costs ${esc(fmtY(-m.saves))} more a year on this plan</b> than ${esc(orig)}.</p>` : ""}
-        <p class="why">${esc(KIND[m.pick.opt.kind])}. ${esc(KIND_NOTE[m.pick.opt.kind] || "")}${keepTotal != null ? ` If you keep ${esc(orig)}, this plan would cost ${esc(fmtY(keepTotal))} for the year instead of ${esc(fmtY(r.total))}.` : ""}</p>
+        <p class="why">${esc(KIND[m.pick.opt.kind])}. ${m.pick.opt.note ? esc(m.pick.opt.note) + " " : ""}${esc(KIND_NOTE[m.pick.opt.kind] || "")}${keepTotal != null ? ` If you keep ${esc(orig)}, this plan would cost ${esc(fmtY(keepTotal))} for the year instead of ${esc(fmtY(r.total))}.` : ""}</p>
         <div class="row no-print"><button type="button" class="btn small" data-act="asis" data-med="${m.mo.med.id}" data-plan="${esc(r.id)}">No thanks, keep my original</button><button type="button" class="btn small ghost" data-act="list" data-key="${esc(openKey)}" aria-expanded="${!!S.open[openKey]}">${S.open[openKey] ? "Hide other choices" : "See other choices"}</button></div></div>`;
     } else {
       body = `<p class="pm-what">${esc(m.pick.opt.title)}${m.locked ? " · your choice" : ""}</p>${m.choices.length > 1 ? `<div class="row no-print"><button type="button" class="btn small ghost" data-act="list" data-key="${esc(openKey)}" aria-expanded="${!!S.open[openKey]}">${S.open[openKey] ? "Hide other choices" : "See other choices"}</button></div>` : ""}`;
@@ -1145,6 +1233,7 @@ function planHTML(r, max, i) {
         const diffTxt = cur ? "This is what the plan total above uses" : diff == null ? "Price not available" : Math.abs(diff) < 0.5 ? "Same yearly total" : diff > 0 ? `${fmtY(diff)} more a year` : `${fmtY(-diff)} less a year`;
         return `<li class="opt${cur ? " current" : ""}"><span class="o-name">${esc(c.opt.title)}${c.opt.kind === "asis" ? " (what you take now)" : ""}</span><span class="o-cost">${planT == null ? "—" : esc(fmtY(planT))}<small>plan total for the year</small></span>
           <span class="o-kind">${esc(diffTxt)} · ${esc(KIND[c.opt.kind])}${c.covered ? "" : " · not covered"}${c.extra ? " · needs extra approval" : ""}</span>
+          ${c.opt.note ? `<span class="o-note">${esc(c.opt.note)}</span>` : ""}
           ${cur ? "" : `<button type="button" class="btn small ghost" data-act="use" data-opt="${esc(c.opt.id)}" data-med="${m.mo.med.id}" data-plan="${esc(r.id)}">Use this</button>`}</li>`;
       }).join("");
       choices = `<ul class="opts">${rows}</ul><p class="hint">Each total is what this plan would cost you for the whole year, including the premium and your other medicines as shown. Your choice is used for every plan.</p>`;
