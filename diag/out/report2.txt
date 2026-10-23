@@ -1,0 +1,32 @@
+
+== 2026 preferred-pharmacy 30-day rows by (cost type 1=copay 2=coinsurance, max, min): {('0', 'max=0', 'min=0'): 16994, ('1', 'max=0', 'min=0'): 5667, ('2', 'max=0', 'min=0'): 5646, ('2', 'max=0', 'min>0'): 1}
+2026: drug-plan pairs 19,188,878; on a coinsurance tier with CMS max 0 (priced at $0 after the deductible): 4,298,189 (22%); distinct drugs affected: 5,488
+
+== 2027 preferred-pharmacy 30-day rows by (cost type 1=copay 2=coinsurance, max, min): {('0', 'max=0', 'min=0'): 18034, ('1', 'max=0', 'min=0'): 4231, ('2', 'max=0', 'min=0'): 5719}
+2027: drug-plan pairs 18,899,816; on a coinsurance tier with CMS max 0 (priced at $0 after the deductible): 3,969,728 (21%); distinct drugs affected: 5,345
+
+== MN 2027, 9 drug plans: yearly cost for one product alone, 30-day retail, typical price (median across plans that cover it)
+apixaban 2.5 MG Oral Tablet [Eliquis]                         plans   9  changed   9  median before $700  after $1,203
+rivaroxaban 20 MG Oral Tablet [Xarelto]                       plans   1  changed   1  median before $700  after $1,304
+empagliflozin 10 MG Oral Tablet [Jardiance]                   plans   9  changed   9  median before $700  after $1,084
+dapagliflozin 10 MG Oral Tablet [Farxiga]                     plans   9  changed   9  median before $700  after $1,025
+sitagliptin phosphate 100 MG Oral Tablet [Januvia]            plans   2  changed   2  median before $700  after $877
+Entresto: not priced
+fluticasone furoate / umeclidinium / vilanterol 0.1 MG/ACTUA  plans   9  changed   9  median before $700  after $2,315
+fluticasone furoate / vilanterol 0.1 MG/ACTUAT / 0.025 MG/AC  plans   9  changed   9  median before $700  after $1,579
+budesonide / formoterol fumarate 0.08 MG/ACTUAT / 0.0045 MG/  plans   5  changed   5  median before $687  after $1,150
+linaclotide 0.145 MG Oral Capsule [Linzess]                   plans   9  changed   9  median before $700  after $1,262
+3 ML semaglutide 1.34 MG/ML Pen Injector [Ozempic]            plans   9  changed   9  median before $700  after $2,400
+0.5 ML dulaglutide 1.5 MG/ML Auto-Injector [Trulicity]        plans   5  changed   5  median before $700  after $2,400
+0.5 ML tirzepatide 10 MG/ML Auto-Injector [Mounjaro]          plans   8  changed   8  median before $700  after $2,400
+semaglutide 4 MG Oral Tablet [Wegovy]                         plans   9  changed   9  median before $700  after $2,400
+Rybelsus: not found
+Xifaxan: not found
+cariprazine 1.5 MG Oral Capsule [Vraylar]                     plans   9  changed   9  median before $700  after $2,400
+apremilast 20 MG Oral Tablet [Otezla]                         plans   9  changed   9  median before $700  after $2,400
+linagliptin 5 MG Oral Tablet [Tradjenta]                      plans   9  changed   9  median before $700  after $1,877
+insulin glargine 100 UNT/ML Injectable Solution [Lantus]      plans   8  changed   8  median before $700  after $1,214
+Humira: not priced
+tiotropium 0.018 MG Inhalation Powder [Spiriva]               plans   5  changed   5  median before $687  after $1,263
+cyclosporine 0.5 MG/ML Ophthalmic Suspension [Restasis]       plans   1  changed   1  median before $300  after $2,009
+24 HR mirabegron 25 MG Extended Release Oral Tablet [Myrbetr  plans   6  changed   6  median before $694  after $1,669
