@@ -18,7 +18,7 @@ jobs:
           for f in index.json 2027/rx/2730167.json 2027/rx/2736946.json 2027/rx/2707553.json 2027/rx/2707551.json 2027/cost/MN.json; do
             curl -sSf "https://nhillson.github.io/formulary-finder/data/$f" -o "diag/out/live/$(echo $f | tr / _)" || echo "miss $f"
           done
-      - run: python diag/diag.py
+      - run: python diag/diag2.py
       - name: Commit results
         run: |
           git config user.name diag-bot; git config user.email diag@users.noreply.github.com
