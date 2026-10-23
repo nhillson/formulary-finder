@@ -865,9 +865,10 @@ function pickStrengths(prods, n) {
 const isInsulin = e => /\binsulin\b/i.test(e.label);
 /* Products with the same name in RxNorm that a pharmacy still can't swap for each other. Each listed brand is its own product;
    any two versions where one is listed (and they aren't the same listed brand) need a new prescription to switch. */
-const OWN_PRODUCT = ["Basaglar", "Admelog", "Novolin", "Zepbound", "Bonsity", "Phyrago", "Torpenz", "InnoPran", "Equetro", "Erzofri", "Vabrinty",
+const OWN_PRODUCT = ["Basaglar", "Admelog", "Novolin", "Zepbound", "Wegovy", "Bonsity", "Phyrago", "Torpenz", "InnoPran", "Equetro", "Erzofri", "Vabrinty",
   "Cortrophin", "Zomacton", "Berinert", "Gammagard ERC", "Gammagard", "Gammaplex", "Gammaked", "Gamunex", "Bivigam", "Privigen"];
-const SWAP_NOTE = { Zepbound: "Mounjaro and Zepbound are the same drug, but Medicare drug plans cover them for different uses, so one can't simply replace the other." };
+const SWAP_NOTE = { Zepbound: "Mounjaro and Zepbound are the same drug, but Medicare drug plans cover them for different uses, so one can't simply replace the other.",
+  Wegovy: "Wegovy and Ozempic (or Rybelsus) are the same drug, but Medicare drug plans cover them for different uses, so one can't simply replace the other." };
 const ownProduct = b => (b && OWN_PRODUCT.find(r => b === r || b.startsWith(r + " "))) || "";
 function swapNote(b0, b1, ing) {
   const r0 = ownProduct(b0), r1 = ownProduct(b1);
