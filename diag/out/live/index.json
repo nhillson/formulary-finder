@@ -1,0 +1,437 @@
+{
+ "generated": "2026-10-23T02:59:48+00:00",
+ "source": "CMS Part D formulary, cost sharing and pricing public use files; drug names from NLM RxNorm",
+ "medications": {
+  "generics": 4286,
+  "brands": 4899,
+  "samples": [
+   [
+    "amoxicillin",
+    [
+     "Amoxi Drop",
+     "Amoxi-tabs",
+     "Biomox",
+     "Moxatag",
+     "Trimox"
+    ]
+   ],
+   [
+    "amphetamine / dextroamphetamine",
+    [
+     "Adderall",
+     "Mydayis"
+    ]
+   ],
+   [
+    "atorvastatin",
+    [
+     "Atorvaliq",
+     "Lipitor"
+    ]
+   ],
+   [
+    "levothyroxine",
+    [
+     "Ermeza",
+     "Euthyrox",
+     "Levo-T",
+     "Levoxyl",
+     "Synthroid",
+     "Thyquidity",
+     "Thyro-Tabs",
+     "ThyroKare",
+     "Thyrocryn",
+     "Tirosint",
+     "Unithroid"
+    ]
+   ],
+   [
+    "semaglutide",
+    [
+     "Ozempic",
+     "Rybelsus",
+     "Wegovy"
+    ]
+   ]
+  ]
+ },
+ "names": {
+  "found": 6201,
+  "needed": 6201,
+  "samples": [
+   "amlodipine / hydrochlorothiazide / olmesartan medoxomil 5 MG / 12.5 MG / 40 MG Oral Tablet [Tribenzor]",
+   "doxycycline monohydrate 50 MG Oral Capsule",
+   "lidocaine 0.018 MG/MG Medicated Patch [ZTlido]",
+   "0.4 ML adalimumab-aaty 100 MG/ML Prefilled Syringe",
+   "olanzapine 10 MG Oral Tablet",
+   "diltiazem hydrochloride 30 MG Oral Tablet"
+  ]
+ },
+ "years": [
+  {
+   "year": 2026,
+   "release": "20260916",
+   "plans": 5496,
+   "formularies": 328,
+   "drugs": 6170,
+   "prices": {
+    "year": 2026,
+    "release": "20261007",
+    "own": true
+   },
+   "qa": {
+    "pdp": 367,
+    "ma": 5129,
+    "noStates": 0,
+    "snp": 1777,
+    "plansByState": {
+     "AK": 9,
+     "AL": 102,
+     "AR": 93,
+     "AS": 1,
+     "AZ": 136,
+     "CA": 397,
+     "CO": 106,
+     "CT": 53,
+     "DC": 15,
+     "DE": 42,
+     "FL": 597,
+     "GA": 154,
+     "GU": 1,
+     "HI": 46,
+     "IA": 65,
+     "ID": 50,
+     "IL": 150,
+     "IN": 128,
+     "KS": 89,
+     "KY": 115,
+     "LA": 114,
+     "MA": 96,
+     "MD": 63,
+     "ME": 54,
+     "MI": 190,
+     "MN": 80,
+     "MO": 155,
+     "MP": 1,
+     "MS": 96,
+     "MT": 36,
+     "NC": 173,
+     "ND": 33,
+     "NE": 55,
+     "NH": 25,
+     "NJ": 85,
+     "NM": 78,
+     "NV": 110,
+     "NY": 202,
+     "OH": 205,
+     "OK": 82,
+     "OR": 97,
+     "PA": 319,
+     "PR": 65,
+     "RI": 31,
+     "SC": 93,
+     "SD": 30,
+     "TN": 135,
+     "TX": 407,
+     "UT": 58,
+     "VA": 138,
+     "VI": 1,
+     "VT": 13,
+     "WA": 125,
+     "WI": 99,
+     "WV": 72,
+     "WY": 19
+    },
+    "tiers": {
+     "1": 321617,
+     "2": 248580,
+     "3": 155943,
+     "4": 178394,
+     "5": 207706,
+     "6": 17105,
+     "7": 19
+    },
+    "withPA": 322556,
+    "withST": 12096,
+    "withQL": 440947,
+    "rows": 1129364,
+    "withCostSharing": 5496,
+    "withPremium": 5496,
+    "withPriceTable": 5496,
+    "priceTables": 3478,
+    "drugsWithAvgPrice": 6170,
+    "countyLimitedPlans": 5101,
+    "sampleCostSharing": [
+     [
+      "H0028-007",
+      [
+       1,
+       0,
+       0,
+       0,
+       [
+        1,
+        0.0,
+        0.0,
+        0.0
+       ],
+       [
+        1,
+        0.0,
+        0.0,
+        0.0
+       ]
+      ],
+      [
+       2,
+       0,
+       0,
+       0,
+       [
+        1,
+        0.0,
+        0.0,
+        0.0
+       ],
+       [
+        1,
+        0.0,
+        0.0,
+        0.0
+       ]
+      ],
+      [
+       3,
+       1,
+       0,
+       0,
+       [
+        2,
+        0.25,
+        0.0,
+        0.0
+       ],
+       [
+        2,
+        0.25,
+        0.0,
+        0.0
+       ]
+      ]
+     ]
+    ],
+    "samplePlans": [
+     [
+      "S1030",
+      "001",
+      "000",
+      "BlueRx Enhanced Plus (PDP)",
+      "BCBS OF ALABAMA & UTIC INSURANCE COMPANY",
+      "00026207",
+      "AL,TN"
+     ],
+     [
+      "S1030",
+      "006",
+      "000",
+      "BlueRx Essential (PDP)",
+      "BCBS OF ALABAMA & UTIC INSURANCE COMPANY",
+      "00026206",
+      "AL,TN"
+     ],
+     [
+      "S2468",
+      "003",
+      "000",
+      "Blue Shield Rx Plus (PDP)",
+      "CALIFORNIA PHYSICIANS' SERVICE",
+      "00026290",
+      "CA"
+     ]
+    ]
+   }
+  },
+  {
+   "year": 2027,
+   "release": "20261008",
+   "plans": 5492,
+   "formularies": 286,
+   "drugs": 5668,
+   "prices": {
+    "year": 2026,
+    "release": "20261007",
+    "own": false
+   },
+   "qa": {
+    "pdp": 323,
+    "ma": 5169,
+    "noStates": 0,
+    "snp": 1969,
+    "plansByState": {
+     "AK": 9,
+     "AL": 115,
+     "AR": 86,
+     "AS": 1,
+     "AZ": 148,
+     "CA": 397,
+     "CO": 106,
+     "CT": 54,
+     "DC": 12,
+     "DE": 43,
+     "FL": 549,
+     "GA": 151,
+     "GU": 1,
+     "HI": 50,
+     "IA": 64,
+     "ID": 45,
+     "IL": 133,
+     "IN": 140,
+     "KS": 84,
+     "KY": 123,
+     "LA": 126,
+     "MA": 89,
+     "MD": 49,
+     "ME": 52,
+     "MI": 183,
+     "MN": 63,
+     "MO": 171,
+     "MP": 1,
+     "MS": 105,
+     "MT": 27,
+     "NC": 177,
+     "ND": 26,
+     "NE": 51,
+     "NH": 25,
+     "NJ": 74,
+     "NM": 68,
+     "NV": 100,
+     "NY": 215,
+     "OH": 173,
+     "OK": 81,
+     "OR": 92,
+     "PA": 324,
+     "PR": 64,
+     "RI": 29,
+     "SC": 91,
+     "SD": 30,
+     "TN": 157,
+     "TX": 412,
+     "UT": 53,
+     "VA": 145,
+     "VI": 1,
+     "VT": 14,
+     "WA": 114,
+     "WI": 97,
+     "WV": 70,
+     "WY": 13
+    },
+    "tiers": {
+     "1": 254832,
+     "2": 221546,
+     "3": 139202,
+     "4": 157772,
+     "5": 176810,
+     "6": 13504
+    },
+    "withPA": 275103,
+    "withST": 9304,
+    "withQL": 391490,
+    "rows": 963666,
+    "withCostSharing": 5492,
+    "withPremium": 5492,
+    "withPriceTable": 0,
+    "priceTables": 0,
+    "drugsWithAvgPrice": 5637,
+    "countyLimitedPlans": 5145,
+    "sampleCostSharing": [
+     [
+      "H0028-007",
+      [
+       1,
+       0,
+       0,
+       0,
+       [
+        1,
+        0.0,
+        0.0,
+        0.0
+       ],
+       [
+        1,
+        0.0,
+        0.0,
+        0.0
+       ]
+      ],
+      [
+       2,
+       0,
+       0,
+       0,
+       [
+        1,
+        0.0,
+        0.0,
+        0.0
+       ],
+       [
+        1,
+        0.0,
+        0.0,
+        0.0
+       ]
+      ],
+      [
+       3,
+       0,
+       0,
+       0,
+       [
+        2,
+        0.17,
+        0.0,
+        0.0
+       ],
+       [
+        2,
+        0.17,
+        0.0,
+        0.0
+       ]
+      ]
+     ]
+    ],
+    "samplePlans": [
+     [
+      "S1030",
+      "001",
+      "000",
+      "BlueRx Enhanced Plus (PDP)",
+      "BCBS OF ALABAMA & UTIC INSURANCE COMPANY",
+      "00027208",
+      "AL,TN"
+     ],
+     [
+      "S1030",
+      "006",
+      "000",
+      "BlueRx Essential (PDP)",
+      "BCBS OF ALABAMA & UTIC INSURANCE COMPANY",
+      "00027207",
+      "AL,TN"
+     ],
+     [
+      "S2468",
+      "003",
+      "000",
+      "Blue Shield Rx Plus (PDP)",
+      "CALIFORNIA PHYSICIANS' SERVICE",
+      "00027196",
+      "CA"
+     ]
+    ]
+   }
+  }
+ ]
+}
