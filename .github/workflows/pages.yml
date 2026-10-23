@@ -44,15 +44,16 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: site-data
-          key: data-v4-${{ steps.release.outputs.key }}
+          key: data-v5-${{ steps.release.outputs.key }}
           restore-keys: |
-            data-v4-${{ steps.release.outputs.key }}-
+            data-v5-${{ steps.release.outputs.key }}-
+            data-v5-
             data-v4-
             data-v3-
 
       - name: Build Medicare data and medication list
         id: build
-        if: ${{ !startsWith(steps.cache.outputs.cache-matched-key, format('data-v4-{0}-', steps.release.outputs.key)) || inputs.rebuild }}
+        if: ${{ !startsWith(steps.cache.outputs.cache-matched-key, format('data-v5-{0}-', steps.release.outputs.key)) || inputs.rebuild }}
         continue-on-error: true
         run: |
           df -h . | tail -1
@@ -65,7 +66,7 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: site-data
-          key: data-v4-${{ steps.release.outputs.key }}-${{ github.run_id }}
+          key: data-v5-${{ steps.release.outputs.key }}-${{ github.run_id }}
 
       - name: Assemble site
         run: |

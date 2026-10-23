@@ -8,6 +8,9 @@ Sources
       average unit prices per plan and drug (only the quarterly files carry prices)
   NLM RxNorm (RxNav API)
       readable drug names and the medication list for autocomplete
+  CMS Medicare Drug Price Negotiation Program "Selected Drug List and Negotiated Prices" file
+      Medicare's negotiated price per unit, by NDC, for the selected drugs. Used for a year whose own
+      plan prices aren't published yet (a new plan year's prices come out in January).
 
 Output (OUT = --out)
   index.json                 years, release dates, data quality stats
@@ -17,7 +20,8 @@ Output (OUT = --out)
   <year>/f/<id>.json         one drug list: [RxCUI, tier, flags(1 PA, 2 ST, 4 QL), QL amount, QL days]
   <year>/rx.json             RxCUIs on any plan's list that year
   <year>/rx/<rxcui>.json     one drug across plans: {"f": {listId: [tier, flags, qlAmt, qlDays]},
-                             "p": {priceTable: unitCost}, "a": typical unit cost, "q": typical 30-day quantity}
+                             "p": {priceTable: unitCost}, "a": typical unit cost, "q": typical 30-day quantity,
+                             "n": 1 when "a" is Medicare's negotiated price}
   <year>/cost/<ST>.json      plans sold in a state with premium, deductible, counties, cost sharing, price table
 
 Usage
@@ -27,12 +31,14 @@ Testing offline
   --zip PATH:YEAR:YYYYMMDD    monthly release zip (repeatable)
   --qzip PATH:YEAR:YYYYMMDD   quarterly release zip with prices (repeatable)
   --names-file PATH           JSON {rxcui: RxNorm name} instead of RxNav
+  --mfp-file PATH             negotiated price CSV or zip instead of downloading it
 """
 import argparse
 import array
 import csv
 import datetime as dt
 import hashlib
+import io
 import json
 import math
 import os
@@ -330,9 +336,68 @@ def build_pricing(zip_path, year, date, workdir):
     return {"year": year, "release": date, "tables": uniq, "plan_table": plan_table, "rx_index": rx_index, "avg": avg}
 
 
+# ---------- Medicare negotiated prices ----------
+
+MFP_PAGE = "https://www.cms.gov/priorities/medicare-prescription-drug-affordability/overview/medicare-drug-price-negotiation-program/selected-drugs-and-negotiated-prices"
+MFP_ZIP = "https://www.cms.gov/files/zip/selected-drug-list-negotiated-prices-also-known-maximum-fair-prices-statutezip.zip"
+
+
+def fetch_mfp(path=None):
+    """Negotiated prices: [(ndc11, unit price, start date, end date or None)]. Empty if the file can't be read."""
+    try:
+        if path:
+            raw = open(path, "rb").read()
+        else:
+            url = MFP_ZIP
+            try:
+                page = http_get(MFP_PAGE, timeout=60, retries=2).decode("utf-8", "replace")
+                m = re.search(r'href="([^"]*selected-drug-list-negotiated-prices[^"]*\.zip)"', page)
+                if m:
+                    url = m.group(1) if m.group(1).startswith("http") else "https://www.cms.gov" + m.group(1)
+            except Exception as e:  # noqa: BLE001
+                log(f"  couldn't read the negotiated price page, using the known file link: {e}")
+            raw = http_get(url, timeout=300)
+        if raw[:2] == b"PK":
+            with zipfile.ZipFile(io.BytesIO(raw)) as zf:
+                name = next(n for n in zf.namelist() if n.lower().endswith(".csv"))
+                raw = zf.read(name)
+        text = raw.decode("utf-8-sig", "replace")
+    except Exception as e:  # noqa: BLE001  negotiated prices are optional
+        note(f"Negotiated prices unavailable: {type(e).__name__}: {e}", "warning")
+        return []
+
+    def date(v):
+        try:
+            return dt.datetime.strptime(v.strip(), "%m/%d/%Y").date()
+        except ValueError:
+            return None
+    out = []
+    for r in csv.DictReader(io.StringIO(text)):
+        r = {k.strip().upper(): (v or "").strip() for k, v in r.items() if k}
+        ndc = re.sub(r"\D", "", r.get("NDC-11", ""))
+        unit = fnum(r.get("NDC-9 MFP PER UNIT PRICE", ""))
+        start = date(r.get("MFP EFFECTIVE DATE", ""))
+        if len(ndc) != 11 or not unit or not start:
+            continue
+        out.append((ndc, unit, start, date(r.get("MFP END DATE", ""))))
+    note(f"Negotiated prices: {len(out)} NDC rows")
+    return out
+
+
+def mfp_by_rx(mfp, ndc2rx, year):
+    """Unit negotiated price per RxCUI in effect on January 1 of the year (median across the RxCUI's NDCs)."""
+    day = dt.date(year, 1, 1)
+    vals = {}
+    for ndc, unit, start, end in mfp:
+        rx = ndc2rx.get(ndc)
+        if rx and start <= day and (end is None or end >= day):
+            vals.setdefault(rx, []).append(unit)
+    return {rx: round(statistics.median(v), 4) for rx, v in vals.items()}
+
+
 # ---------- Plans, drug lists, cost sharing (monthly release) ----------
 
-def build_year(zip_path, year, date, out_dir, workdir, pricing=None, fallback=None):
+def build_year(zip_path, year, date, out_dir, workdir, pricing=None, fallback=None, mfp=()):
     tables = collect_tables(zip_path, workdir, {"plans", "formulary", "geo", "bencost"}, MONTHLY_SKIP)
     for need in ("plans", "formulary"):
         if need not in tables:
@@ -410,7 +475,7 @@ def build_year(zip_path, year, date, out_dir, workdir, pricing=None, fallback=No
                                               share("PREF"), share("NONPREF"), share("MAIL_PREF") or share("MAIL_NONPREF")]
 
     # Drug lists
-    forms, versions = {}, {}
+    forms, versions, ndc2rx = {}, {}, {}
     for r in read_rows(tables["formulary"]):
         fid = r.get("FORMULARY_ID", "").zfill(8)
         if fid not in wanted:
@@ -418,6 +483,9 @@ def build_year(zip_path, year, date, out_dir, workdir, pricing=None, fallback=No
         rx = rx_id(r.get("RXCUI", ""))
         if not rx:
             continue
+        ndc = re.sub(r"\D", "", r.get("NDC", "")).zfill(11)
+        if ndc.strip("0"):
+            ndc2rx.setdefault(ndc, rx)
         try:
             tier = int(float(r.get("TIER_LEVEL_VALUE") or 0))
         except ValueError:
@@ -447,6 +515,8 @@ def build_year(zip_path, year, date, out_dir, workdir, pricing=None, fallback=No
     price_src = pricing if pricing and pricing["year"] == year else None
     avg_src = price_src or fallback
     plan_tid = {k: price_src["plan_table"].get(k) for k in live} if price_src else {}
+    # Without this year's own prices, use Medicare's negotiated price where there is one, since it's the same on every plan
+    negotiated = {} if price_src else mfp_by_rx(mfp, ndc2rx, year)
     used_tids = {t for t in plan_tid.values() if t}
 
     # Per-state plan files for the cost estimator
@@ -465,7 +535,7 @@ def build_year(zip_path, year, date, out_dir, workdir, pricing=None, fallback=No
     for st, rows in by_state.items():
         write_json(os.path.join(ydir, "cost", f"{st}.json"), {
             "year": year, "state": st, "release": date,
-            "prices": {"year": avg_src["year"], "release": avg_src["release"], "own": bool(price_src)} if avg_src else None,
+            "prices": {"year": avg_src["year"], "release": avg_src["release"], "own": bool(price_src), "negotiated": len(negotiated)} if avg_src else None,
             "counties": sorted(state_counties.get(st, []), key=lambda x: x[1]), "plans": rows})
 
     # Per-drug files
@@ -481,7 +551,9 @@ def build_year(zip_path, year, date, out_dir, workdir, pricing=None, fallback=No
             p = {t: round(price_src["tables"][t][i], 4) for t in used_tids if price_src["tables"][t][i] == price_src["tables"][t][i]}
             if p:
                 obj["p"] = p
-        if avg_src and rx in avg_src["avg"]:
+        if rx in negotiated:
+            obj["a"], obj["n"] = negotiated[rx], 1
+        elif avg_src and rx in avg_src["avg"]:
             obj["a"] = avg_src["avg"][rx]
         write_json(os.path.join(ydir, "rx", f"{rx}.json"), obj)
     write_json(os.path.join(ydir, "rx.json"), sorted((int(r) if r.isdigit() else r for r in by_rx), key=lambda x: (isinstance(x, str), x)))
@@ -505,13 +577,14 @@ def build_year(zip_path, year, date, out_dir, workdir, pricing=None, fallback=No
           "withCostSharing": sum(1 for k in live if k in cost), "withPremium": sum(1 for pl in live.values() if pl["prem"] is not None),
           "withPriceTable": sum(1 for t in plan_tid.values() if t), "priceTables": len(used_tids),
           "drugsWithAvgPrice": sum(1 for rx in by_rx if avg_src and rx in avg_src["avg"]),
+          "drugsWithNegotiatedPrice": sum(1 for rx in by_rx if rx in negotiated),
           "countyLimitedPlans": sum(1 for pl in live.values() if pl["cty"] and not pl["wide"]),
           "sampleCostSharing": [[plan_id(k)] + v for k, v in list(cost.items())[:1] for v in [list(v.values())[:3]]],
           "samplePlans": [r[:7] for r in plan_rows if r[0].startswith("S")][:3]}
     note(f"{year}: {qa['pdp']} PDP + {qa['ma']} MA plans; cost sharing for {qa['withCostSharing']}, price tables for {qa['withPriceTable']} "
          f"({qa['priceTables']} distinct); {qa['drugsWithAvgPrice']} of {len(by_rx)} drugs with a typical price")
     info = {"year": year, "release": date, "plans": len(plan_rows), "formularies": len(forms), "drugs": len(by_rx),
-            "prices": {"year": avg_src["year"], "release": avg_src["release"], "own": bool(price_src)} if avg_src else None, "qa": qa}
+            "prices": {"year": avg_src["year"], "release": avg_src["release"], "own": bool(price_src), "negotiated": len(negotiated)} if avg_src else None, "qa": qa}
     return info, set(by_rx)
 
 
@@ -710,6 +783,7 @@ def main():
     ap.add_argument("--zip", action="append", default=[], help="PATH:YEAR:YYYYMMDD monthly release (testing)")
     ap.add_argument("--qzip", action="append", default=[], help="PATH:YEAR:YYYYMMDD quarterly release (testing)")
     ap.add_argument("--names-file")
+    ap.add_argument("--mfp-file")
     a = ap.parse_args()
 
     if a.zip:
@@ -740,6 +814,7 @@ def main():
     write_json(os.path.join(out, "drugs.json"), drugs)
     note(f"Medication list: {len(drugs)} generics, {sum(len(b) for _, b in drugs)} brand names")
 
+    mfp = fetch_mfp(a.mfp_file)
     years, all_rx = [], set()
     with tempfile.TemporaryDirectory() as tmp:
         pricing = {}
@@ -761,7 +836,7 @@ def main():
             path = fetch_zip(r, tmp, "m")
             work = os.path.join(tmp, f"w{r['year']}")
             os.makedirs(work)
-            info, rx = build_year(path, r["year"], r["date"], out, work, pricing.get(r["year"]), latest_prices)
+            info, rx = build_year(path, r["year"], r["date"], out, work, pricing.get(r["year"]), latest_prices, mfp)
             years.append(info)
             all_rx |= rx
             if not r.get("path"):

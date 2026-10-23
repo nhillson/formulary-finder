@@ -1167,7 +1167,7 @@ function renderResults(focusPlan) {
     <p class="meta">${typed.length} plans checked. The most anyone pays for covered medicines in ${C.y} is ${esc(money0.format(C.cap))}, plus premiums.</p></div>`;
   if (!C.county) h += `<p class="notice">These are plans across all of ${esc(STATE_NAMES[C.st] || C.st)}. Choose your county in step 2 for the exact list.</p>`;
   if (!prices) h += `<p class="notice warn">Medicare hasn't published prices yet, so some estimates are incomplete.</p>`;
-  else if (!prices.own) h += `<p class="notice warn">Medicare publishes ${C.y} prices in January. Until then, these ${C.y} estimates use typical ${prices.year} prices. Copays and premiums are exact, but costs shown as a percentage are approximate.</p>`;
+  else if (!prices.own) h += `<p class="notice warn">Medicare publishes ${C.y} prices in January. Until then, these ${C.y} estimates use typical ${prices.year} prices${prices.negotiated ? `, except for medicines with a price Medicare negotiated for ${C.y}, which use that price` : ""}. Copays and premiums are exact, but costs shown as a percentage are approximate.</p>`;
   (C.notes || []).forEach(n => { h += `<p class="notice">${esc(n)}</p>`; });
   if (!typed.length) h += `<p class="notice warn">There are no ${esc(TYPE_LIST[T].toLowerCase())} here. Change your answer in step 1 to see other plans.</p>`;
   else if (V.all && !coverAll) h += `<p class="notice warn">No plan here covers all of your medicines. All plans are shown, and medicines a plan doesn't cover are counted at full price.</p>`;
