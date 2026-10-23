@@ -400,6 +400,9 @@ def build_year(zip_path, year, date, out_dir, workdir, pricing=None, fallback=No
                 if t not in ("1", "2"):
                     return 0
                 vals = [fnum(r.get(f"COST_AMT_{sfx}")), fnum(r.get(f"COST_MIN_AMT_{sfx}")), fnum(r.get(f"COST_MAX_AMT_{sfx}"))]
+                # CMS writes 0 for "no minimum" and "no maximum" on coinsurance; keep only real limits
+                if t == "2":
+                    vals[1:] = [v if v and v > 0 else None for v in vals[1:]]
                 return [int(t)] + [round(v, 4) if v is not None else None for v in vals]
 
             ded = r.get("DED_APPLIES_YN", r.get("DED APPLIES YN", ""))

@@ -968,8 +968,9 @@ function costShare(share, price) {
   if (type === 2) {
     if (price == null) return null;
     let v = (amt || 0) * price;
-    if (min != null) v = Math.max(v, Math.min(min, price));
-    if (max != null) v = Math.min(v, max);
+    // CMS writes 0 for "no minimum" and "no maximum", so only a positive amount is a real limit
+    if (min > 0) v = Math.max(v, Math.min(min, price));
+    if (max > 0) v = Math.min(v, max);
     return Math.min(v, price);
   }
   return null;
