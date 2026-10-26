@@ -599,7 +599,7 @@ oxalate valerate benzoate hyclate monosodium disodium anhydrous hydrate pamoate 
 
 APP_PREFIX = re.compile(r"^((?:NDA|BLA|ANDA)\d+)\s+")
 # RxNorm puts a word in front of some names, e.g. "Abuse-Deterrent 12 HR oxycodone ..." or "Once-Daily gabapentin ...".
-# Keep in step with TAG_WORDS in index.html.
+# Keep in step with TAG_WORDS in prices.html.
 TAG_WORDS = ("Abuse-Deterrent|Osmotic|Sprinkle|Modified|Smoking Cessation|Breath-Actuated|BX Rating|Pediatric|Niacinamide|Augmented|Once-Daily|"
              "Twice-Daily|Microencapsulated|Preservative-Free|PMDD|Pulmonary Hypertension|Atrial Fibrillation|Hyponatremia|Emollient|Sugar-Free|Soft Gelatin")
 TAG_PREFIX = re.compile(r"^(" + TAG_WORDS + r")\s+(?=[a-z\d])")
