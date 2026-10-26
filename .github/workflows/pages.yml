@@ -71,7 +71,7 @@ jobs:
       - name: Assemble site
         run: |
           mkdir -p _site
-          cp index.html finder.html cost.html classes.js .nojekyll _site/
+          cp index.html prices.html finder.html cost.html classes.js .nojekyll _site/
           if [ -d site-data ]; then cp -r site-data _site/data; du -sh _site/data; else echo "No data yet; publishing the page without Medicare data"; fi
           if [ "${{ steps.build.outcome }}" = "failure" ]; then echo "::warning::Data build failed; published the previous data (if any)"; fi
 

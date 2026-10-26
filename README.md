@@ -2,10 +2,10 @@
 
 Two pages:
 
-- **Part D Cost Estimator** (`index.html`, the home page) ranks every Medicare drug plan in your county by estimated yearly cost. You add each medicine by brand or generic name and type your total daily dose; the estimator tries every mix of tablet strengths that adds up to that dose, generic and brand versions, and similar medicines in the same class, and uses the cheapest option per plan. Any switch can be refused or swapped for another choice, and every plan is recalculated. Built for older users: large text with a size control, plain language, and a print button.
+- **Part D Cost Estimator** (`prices.html`, linked from the front page `index.html`) ranks every Medicare drug plan in your county by estimated yearly cost. You add each medicine by brand or generic name and type your total daily dose; the estimator tries every mix of tablet strengths that adds up to that dose, generic and brand versions, and similar medicines in the same class, and uses the cheapest option per plan. Any switch can be refused or swapped for another choice, and every plan is recalculated. Built for older users: large text with a size control, plain language, and a print button.
 - **Formulary Finder** (`finder.html`) finds close substitutes for a prescription and checks them against any insurance's drug list (PDF, pasted text, or a Medicare plan).
 
-Built-in drug classes live in `classes.js`, shared by both pages. `cost.html` redirects to the home page.
+Built-in drug classes live in `classes.js`, shared by both pages. `cost.html` redirects to `prices.html`.
 
 Find close substitutes for a prescription, then check which ones your health plan's drug list (formulary) covers.
 
